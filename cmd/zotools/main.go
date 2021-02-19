@@ -73,11 +73,19 @@ func main() {
 		os.Exit(0)
 	}
 
+	var configPath string
+
+	// Prefer using the one passed as argument over the environment
 	if *flagConfig == "" {
-		Dief("Database file is required\n")
+		configPath = os.Getenv("ZOTOOLS")
+		if configPath == "" {
+			Dief("Configuration file is required\n")
+		}
+	} else {
+		configPath = *flagConfig
 	}
 
-	configBytes, err := os.ReadFile(*flagConfig)
+	configBytes, err := os.ReadFile(configPath)
 	if err != nil {
 		Dief("Failed to read config file:\n - %v\n", err)
 	}
