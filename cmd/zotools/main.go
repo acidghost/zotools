@@ -52,7 +52,7 @@ type Command interface {
 }
 
 func main() {
-	flagConfig := flag.String("config", "", "configuration JSON file")
+	flagConfig := flag.String("config", "", "configuration JSON file (overwrites ZOTOOLS)")
 	flagNoColor := flag.Bool("no-color", false, "disable color output")
 	flag.Usage = Usage
 	flag.Parse()

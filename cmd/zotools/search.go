@@ -12,15 +12,15 @@ import (
 	"github.com/fatih/color"
 )
 
-const SearchUsageFmt = `Usage: %s [OPTIONS] search [OPTIONS] search-term
+const SearchUsageFmt = `Usage: %s [OPTIONS] search [OPTIONS] search-regexp
 
 Common options:
 `
 
 const SearchUsageFmtOpts = `
 Command specific arguments and options:
-  search-term
-        term to search for in the library (case-insensitive, in title and abstract)
+  search-regexp
+        regexp to search for in the library (case-insensitive, in title)
 `
 
 type SearchCommand struct {
