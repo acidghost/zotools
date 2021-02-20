@@ -51,53 +51,8 @@ func (c *SyncCommand) Run(args []string, config Config) {
 			dropCache()
 		}
 
-		byKey := make(map[string]StoredItem)
-		for _, item := range items.Items {
-			if item.Data.ParentKey != "" {
-				attach := Attachment{
-					Key:         item.Key,
-					Version:     item.Version,
-					ContentType: item.Data.ContentType,
-					Filename:    item.Data.Filename,
-				}
-				if parent, exists := byKey[item.Data.ParentKey]; exists {
-					parent.Attachments = append(parent.Attachments, attach)
-					byKey[item.Data.ParentKey] = parent
-				} else {
-					byKey[item.Data.ParentKey] = StoredItem{
-						Attachments: []Attachment{attach},
-					}
-				}
-			} else {
-				if existing, exists := byKey[item.Key]; exists {
-					// Already present, only attachments
-					byKey[item.Key] = StoredItem{
-						Key:         item.Key,
-						Version:     item.Version,
-						Title:       item.Data.Title,
-						Abstract:    item.Data.Abstract,
-						Creators:    item.Data.Creators,
-						Attachments: existing.Attachments,
-					}
-				} else {
-					byKey[item.Key] = StoredItem{
-						Key:         item.Key,
-						Version:     item.Version,
-						Title:       item.Data.Title,
-						Abstract:    item.Data.Abstract,
-						Creators:    item.Data.Creators,
-						Attachments: []Attachment{},
-					}
-				}
-			}
-		}
-
-		fmt.Printf("Retrived %d top level items\n", len(byKey))
-		cache.Lib.Version = items.Version
-		cache.Lib.Items = make([]StoredItem, 0, len(byKey))
-		for _, item := range byKey {
-			cache.Lib.Items = append(cache.Lib.Items, item)
-		}
+		initSync(cache, items)
+		fmt.Printf("Retrived %d top level items\n", len(cache.Lib.Items))
 
 		if err := cache.PersistLibrary(); err != nil {
 			Eprintf("Failed to persist library:\n - %v\n", err)
@@ -108,5 +63,54 @@ func (c *SyncCommand) Run(args []string, config Config) {
 	} else {
 		// TODO: code me
 		println("Synchronizing an existing library is not supported yet")
+	}
+}
+
+func initSync(cache *Cache, items zotero.ItemsResult) {
+	byKey := make(map[string]StoredItem)
+	for _, item := range items.Items {
+		if item.Data.ParentKey != "" {
+			attach := Attachment{
+				Key:         item.Key,
+				Version:     item.Version,
+				ContentType: item.Data.ContentType,
+				Filename:    item.Data.Filename,
+			}
+			if parent, exists := byKey[item.Data.ParentKey]; exists {
+				parent.Attachments = append(parent.Attachments, attach)
+				byKey[item.Data.ParentKey] = parent
+			} else {
+				byKey[item.Data.ParentKey] = StoredItem{
+					Attachments: []Attachment{attach},
+				}
+			}
+		} else {
+			if existing, exists := byKey[item.Key]; exists {
+				// Already present, only attachments
+				byKey[item.Key] = StoredItem{
+					Key:         item.Key,
+					Version:     item.Version,
+					Title:       item.Data.Title,
+					Abstract:    item.Data.Abstract,
+					Creators:    item.Data.Creators,
+					Attachments: existing.Attachments,
+				}
+			} else {
+				byKey[item.Key] = StoredItem{
+					Key:         item.Key,
+					Version:     item.Version,
+					Title:       item.Data.Title,
+					Abstract:    item.Data.Abstract,
+					Creators:    item.Data.Creators,
+					Attachments: []Attachment{},
+				}
+			}
+		}
+	}
+
+	cache.Lib.Version = items.Version
+	cache.Lib.Items = make([]StoredItem, 0, len(byKey))
+	for _, item := range byKey {
+		cache.Lib.Items = append(cache.Lib.Items, item)
 	}
 }
