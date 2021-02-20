@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -77,7 +78,8 @@ func (c *SearchCommand) Run(args []string, config Config) {
 		if match {
 			fmt.Printf("%s (%s)\n", bold(green(item.Title)), authorsToString(item.Creators))
 			for _, attach := range item.Attachments {
-				color.Blue("%s/storage/%s/%s\n", config.Zotero, attach.Key, attach.Filename)
+				path := filepath.Join(config.Zotero, "storage", attach.Key, attach.Filename)
+				color.Blue(path)
 			}
 		}
 	}
