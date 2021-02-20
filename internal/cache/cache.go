@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/acidghost/zotools/zotero"
+	"github.com/acidghost/zotools/internal/zotero"
 )
 
 type DB struct {

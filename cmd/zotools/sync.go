@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	. "github.com/acidghost/zotools/cache"
-	"github.com/acidghost/zotools/zotero"
+	. "github.com/acidghost/zotools/internal/cache"
+	"github.com/acidghost/zotools/internal/zotero"
 )
 
 type SyncCommand struct {
