@@ -24,9 +24,9 @@ func (c *SyncCommand) Name() string {
 
 func (c *SyncCommand) Run(args []string, config Config) {
 	c.fs.Parse(args)
-	db, err := LoadDB(config.Cache)
+	cache, err := Load(config.Cache)
 	if err != nil {
-		Dief("Failed to load the local database:\n - %v\n", err)
+		Dief("Failed to load the local cache:\n - %v\n", err)
 	}
 
 	zot, err := zotero.New(config.Key)
@@ -34,13 +34,13 @@ func (c *SyncCommand) Run(args []string, config Config) {
 		Dief("Failed to initialize Zotero API:\n - %v\n", err)
 	}
 
-	if db.Lib.Version == 0 {
+	if cache.Lib.Version == 0 {
 		// Initial sync queries all the items
 
-		dropDB := func() {
-			err := db.Drop()
+		dropCache := func() {
+			err := cache.Drop()
 			if err != nil {
-				Eprintf("Database was not successfully deleted:\n - %v\n", err)
+				Eprintf("Cache was not successfully deleted:\n - %v\n", err)
 			}
 			os.Exit(1)
 		}
@@ -48,7 +48,7 @@ func (c *SyncCommand) Run(args []string, config Config) {
 		items, err := zot.AllItems()
 		if err != nil {
 			Eprintf("Failed to load items:\n - %v\n", err)
-			dropDB()
+			dropCache()
 		}
 
 		byKey := make(map[string]StoredItem)
@@ -93,15 +93,15 @@ func (c *SyncCommand) Run(args []string, config Config) {
 		}
 
 		fmt.Printf("Retrived %d top level items\n", len(byKey))
-		db.Lib.Version = items.Version
-		db.Lib.Items = make([]StoredItem, 0, len(byKey))
+		cache.Lib.Version = items.Version
+		cache.Lib.Items = make([]StoredItem, 0, len(byKey))
 		for _, item := range byKey {
-			db.Lib.Items = append(db.Lib.Items, item)
+			cache.Lib.Items = append(cache.Lib.Items, item)
 		}
 
-		if err := db.PersistLibrary(); err != nil {
+		if err := cache.PersistLibrary(); err != nil {
 			Eprintf("Failed to persist library:\n - %v\n", err)
-			dropDB()
+			dropCache()
 		}
 
 		println("Library persisted!")

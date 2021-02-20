@@ -9,7 +9,7 @@ import (
 	"github.com/acidghost/zotools/internal/zotero"
 )
 
-type DB struct {
+type Cache struct {
 	filename string
 	file     *os.File
 	Lib      *Library
@@ -37,23 +37,23 @@ type Attachment struct {
 	Filename    string
 }
 
-func LoadDB(filename string) (*DB, error) {
-	newDB := false
+func Load(filename string) (*Cache, error) {
+	creating := false
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		newDB = true
+		creating = true
 	}
 
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		verb := "open"
-		if newDB {
+		if creating {
 			verb = "create"
 		}
 		return nil, fmt.Errorf("could not %s file %s: %v", verb, filename, err)
 	}
 
 	var library Library
-	if !newDB {
+	if !creating {
 		fileContents, err := io.ReadAll(file)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read from file %s: %v", filename, err)
@@ -66,25 +66,25 @@ func LoadDB(filename string) (*DB, error) {
 		library = Library{}
 	}
 
-	return &DB{filename, file, &library}, nil
+	return &Cache{filename, file, &library}, nil
 }
 
-func (db *DB) PersistLibrary() error {
-	serialized, err := json.Marshal(db.Lib)
+func (c *Cache) PersistLibrary() error {
+	serialized, err := json.Marshal(c.Lib)
 	if err != nil {
 		return fmt.Errorf("failed to serialize library as JSON: %v", err)
 	}
-	_, err = db.file.Write(serialized)
+	_, err = c.file.Write(serialized)
 	if err != nil {
-		return fmt.Errorf("failed to write to %s: %v", db.filename, err)
+		return fmt.Errorf("failed to write to %s: %v", c.filename, err)
 	}
 	return nil
 }
 
-func (db *DB) Drop() (err error) {
-	err = os.Remove(db.filename)
+func (c *Cache) Drop() (err error) {
+	err = os.Remove(c.filename)
 	if err != nil {
-		err = fmt.Errorf("failed to delete %s: %v", db.filename, err)
+		err = fmt.Errorf("failed to delete %s: %v", c.filename, err)
 	}
 	return
 }

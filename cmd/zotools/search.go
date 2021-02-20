@@ -54,16 +54,16 @@ func (c *SearchCommand) Run(args []string, config Config) {
 		os.Exit(1)
 	}
 
-	db, err := LoadDB(config.Cache)
+	cache, err := Load(config.Cache)
 	if err != nil {
-		Dief("Failed to load the local database:\n - %v\n", err)
+		Dief("Failed to load the local cache:\n - %v\n", err)
 	}
 
-	fmt.Printf("Loaded DB, version %d, %d items\n", db.Lib.Version, len(db.Lib.Items))
+	fmt.Printf("Loaded cache, version %d, %d items\n", cache.Lib.Version, len(cache.Lib.Items))
 	fmt.Printf("Running search for term '%s'\n", blue(search))
 
 	re := regexp.MustCompile("(?i)" + search)
-	for _, item := range db.Lib.Items {
+	for _, item := range cache.Lib.Items {
 		match := re.MatchString(item.Title)
 		if *c.flagAbstract {
 			if *c.flagAuthors {
