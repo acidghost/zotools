@@ -24,13 +24,15 @@ const Banner = `                  __                 ___
       \/____/\/___/  \/__/\/___/ \/___/\/____/\/___/ 
 `
 
-const UsageFmt = `Usage: %s [OPTIONS] command
+const UsageFmt = `Usage: %[1]s [OPTIONS] command
 
 Available commands:
   - sync
         download items from Zotero server and update local cache
   - search
         search for items
+
+For help on a specific command try: %[1]s command -h
 
 Common options:
 `
