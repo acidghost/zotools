@@ -103,3 +103,10 @@ func assertEqNest(t *testing.T, base interface{}, expr string, expected interfac
 		t.Errorf("%s: %[2]T(%[2]v) != %[3]T(%[3]v)", expr, v, expected)
 	}
 }
+
+func assertEq(t *testing.T, value, expected interface{}) {
+	if value != expected {
+		t.Helper()
+		t.Errorf("%[1]T(%[1]v) != %[2]T(%[2]v)", value, expected)
+	}
+}

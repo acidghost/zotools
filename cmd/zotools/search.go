@@ -6,12 +6,15 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
+	"sync"
 	"unicode"
 
 	. "github.com/acidghost/zotools/internal/cache"
 	"github.com/acidghost/zotools/internal/zotero"
 	"github.com/fatih/color"
+	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 )
@@ -31,19 +34,23 @@ type SearchCommand struct {
 	fs           *flag.FlagSet
 	flagAbstract *bool
 	flagAuthors  *bool
+	flagSens     *bool
+	flagPar      *uint
 }
 
 func NewSearchCommand() *SearchCommand {
 	fs := flag.NewFlagSet("search", flag.ExitOnError)
 	flagAbstract := fs.Bool("abs", false, "search also in the abstract")
 	flagAuthors := fs.Bool("auth", false, "search also among the authors")
+	flagSens := fs.Bool("s", false, "regular expression is case sensitive")
+	flagPar := fs.Uint("j", uint(runtime.NumCPU()), "number of search jobs (between 1 and #cpus)")
 	fs.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), green(Banner)+"\n\n"+SearchUsageFmt, os.Args[0])
 		flag.PrintDefaults()
 		fmt.Fprintf(flag.CommandLine.Output(), SearchUsageFmtOpts)
 		fs.PrintDefaults()
 	}
-	return &SearchCommand{fs, flagAbstract, flagAuthors}
+	return &SearchCommand{fs, flagAbstract, flagAuthors, flagSens, flagPar}
 }
 
 func (c *SearchCommand) Name() string {
@@ -58,6 +65,23 @@ func (c *SearchCommand) Run(args []string, config Config) {
 		os.Exit(1)
 	}
 
+	par := int(*c.flagPar)
+	if par < 1 || par > runtime.NumCPU() {
+		Dief("Number of jobs must be between 1 and %d\n", runtime.NumCPU())
+	}
+
+	var reFlags string
+	if !*c.flagSens {
+		reFlags += "i"
+	}
+	if reFlags != "" {
+		reFlags = "(?" + reFlags + ")"
+	}
+	re, err := regexp.Compile(reFlags + search)
+	if err != nil {
+		Dief("Wrong search: %v\n", err)
+	}
+
 	cache, err := Load(config.Cache)
 	if err != nil {
 		Dief("Failed to load the local cache:\n - %v\n", err)
@@ -66,44 +90,101 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	fmt.Printf("Loaded cache, version %d, %d items\n", cache.Lib.Version, len(cache.Lib.Items))
 	fmt.Printf("Running search for term '%s'\n", blue(search))
 
-	re := regexp.MustCompile("(?i)" + search)
-	for _, item := range cache.Lib.Items {
-		match := re.MatchString(searchable(item.Title))
-		if *c.flagAbstract {
-			if *c.flagAuthors {
-				match = match || re.MatchString(searchable(item.Abstract)) ||
-					matchAuthors(re, item.Creators)
-			} else {
-				match = match || re.MatchString(searchable(item.Abstract))
+	wgMatchers := sync.WaitGroup{}
+	itemsCh := make(chan StoredItem)
+	matchedCh := make(chan StoredItem)
+	printerDone := make(chan struct{})
+
+	// Start matcher jobs
+	for i := 0; i < par; i++ {
+		go func() {
+			s := newMatcher(re)
+			for item := range itemsCh {
+				if c.matchItem(&s, &item) {
+					matchedCh <- item
+				}
 			}
-		} else if *c.flagAuthors {
-			match = match || matchAuthors(re, item.Creators)
-		}
-		if match {
+			// No more items to match
+			wgMatchers.Done()
+		}()
+	}
+	wgMatchers.Add(par)
+
+	// Wait for the matchers to complete and let the printer job know
+	go func() {
+		wgMatchers.Wait()
+		close(matchedCh)
+	}()
+
+	// Printer job, receives from the matchers
+	go func() {
+		for item := range matchedCh {
 			fmt.Printf("%s (%s)\n", bold(green(item.Title)), authorsToString(item.Creators))
 			for _, attach := range item.Attachments {
 				path := filepath.Join(config.Zotero, "storage", attach.Key, attach.Filename)
 				color.Blue(path)
 			}
 		}
+		printerDone <- struct{}{}
+	}()
+
+	// Send all items to matchers
+	for _, item := range cache.Lib.Items {
+		itemsCh <- item
 	}
+
+	// Close to let the matchers know that we're done with the items
+	close(itemsCh)
+	// Wait for printer to be done
+	<-printerDone
 }
 
-var searchTransform = transform.Chain(norm.NFKD, transform.RemoveFunc(isNotSearchFriendly))
-
-func isNotSearchFriendly(r rune) bool {
-	return unicode.Is(unicode.Mn, r)
+func (c *SearchCommand) matchItem(m *matcher, item *StoredItem) bool {
+	match := m.match(item.Title)
+	if *c.flagAbstract {
+		if *c.flagAuthors {
+			match = match || m.match(item.Abstract) || m.matchAuthors(item.Creators)
+		} else {
+			match = match || m.match(item.Abstract)
+		}
+	} else if *c.flagAuthors {
+		match = match || m.matchAuthors(item.Creators)
+	}
+	return match
 }
 
-func searchable(s string) string {
-	res, _, _ := transform.String(searchTransform, s)
-	return res
+type matcher struct {
+	re *regexp.Regexp
+	tr *transform.Transformer
 }
 
-func matchAuthors(re *regexp.Regexp, authors []zotero.Creator) bool {
+func newMatcher(re *regexp.Regexp) matcher {
+	tr := transform.Chain(norm.NFKD, runes.Remove(runes.In(unicode.Mn)),
+		runes.Map(func(r rune) rune {
+			switch r {
+			case 'Ø':
+				return 'O'
+			case 'ø':
+				return 'o'
+			case 'Ł':
+				return 'L'
+			case 'ł':
+				return 'l'
+			default:
+				return r
+			}
+		}))
+	return matcher{re, &tr}
+}
+
+func (m *matcher) match(content string) bool {
+	simp, _, _ := transform.String(*m.tr, content)
+	return m.re.MatchString(simp)
+}
+
+func (m *matcher) matchAuthors(authors []zotero.Creator) bool {
 	for _, author := range authors {
-		if re.MatchString(searchable(author.FirstName)) ||
-			re.MatchString(searchable(author.LastName)) {
+		if m.match(author.FirstName) || m.match(author.LastName) {
 			return true
 		}
 	}
