@@ -30,6 +30,8 @@ Command specific arguments and options:
         regexp to search for in the library (case-insensitive, in title)
 `
 
+var numCPU = runtime.NumCPU()
+
 type SearchCommand struct {
 	fs           *flag.FlagSet
 	flagAbstract *bool
@@ -43,7 +45,8 @@ func NewSearchCommand() *SearchCommand {
 	flagAbstract := fs.Bool("abs", false, "search also in the abstract")
 	flagAuthors := fs.Bool("auth", false, "search also among the authors")
 	flagSens := fs.Bool("s", false, "regular expression is case sensitive")
-	flagPar := fs.Uint("j", uint(runtime.NumCPU()), "number of search jobs (between 1 and #cpus)")
+	flagPar := fs.Uint("j", uint(numCPU),
+		fmt.Sprintf("number of search jobs (between 1 and %d)", numCPU))
 	fs.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), green(Banner)+"\n\n"+SearchUsageFmt, os.Args[0])
 		flag.PrintDefaults()
@@ -66,8 +69,8 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	}
 
 	par := int(*c.flagPar)
-	if par < 1 || par > runtime.NumCPU() {
-		Dief("Number of jobs must be between 1 and %d\n", runtime.NumCPU())
+	if par < 1 || par > numCPU {
+		Dief("Number of jobs must be between 1 and %d\n", numCPU)
 	}
 
 	var reFlags string
