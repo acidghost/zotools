@@ -7,10 +7,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
 
 	. "github.com/acidghost/zotools/internal/cache"
 	"github.com/acidghost/zotools/internal/zotero"
 	"github.com/fatih/color"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 const SearchUsageFmt = `Usage: %s [OPTIONS] search [OPTIONS] search-regexp
@@ -65,12 +68,13 @@ func (c *SearchCommand) Run(args []string, config Config) {
 
 	re := regexp.MustCompile("(?i)" + search)
 	for _, item := range cache.Lib.Items {
-		match := re.MatchString(item.Title)
+		match := re.MatchString(searchable(item.Title))
 		if *c.flagAbstract {
 			if *c.flagAuthors {
-				match = match || re.MatchString(item.Abstract) || matchAuthors(re, item.Creators)
+				match = match || re.MatchString(searchable(item.Abstract)) ||
+					matchAuthors(re, item.Creators)
 			} else {
-				match = match || re.MatchString(item.Abstract)
+				match = match || re.MatchString(searchable(item.Abstract))
 			}
 		} else if *c.flagAuthors {
 			match = match || matchAuthors(re, item.Creators)
@@ -85,9 +89,21 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	}
 }
 
+var searchTransform = transform.Chain(norm.NFKD, transform.RemoveFunc(isNotSearchFriendly))
+
+func isNotSearchFriendly(r rune) bool {
+	return unicode.Is(unicode.Mn, r)
+}
+
+func searchable(s string) string {
+	res, _, _ := transform.String(searchTransform, s)
+	return res
+}
+
 func matchAuthors(re *regexp.Regexp, authors []zotero.Creator) bool {
 	for _, author := range authors {
-		if re.MatchString(author.FirstName) || re.MatchString(author.LastName) {
+		if re.MatchString(searchable(author.FirstName)) ||
+			re.MatchString(searchable(author.LastName)) {
 			return true
 		}
 	}
