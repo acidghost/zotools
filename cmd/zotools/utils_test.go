@@ -93,7 +93,7 @@ func evalExpr(exprStr string, obj interface{}) (interface{}, error) {
 	return value.Interface(), nil
 }
 
-func assertEq(t *testing.T, base interface{}, expr string, expected interface{}) {
+func assertEqNest(t *testing.T, base interface{}, expr string, expected interface{}) {
 	v, err := evalExpr(expr, base)
 	if err != nil {
 		panic(err)

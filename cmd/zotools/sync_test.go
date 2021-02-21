@@ -31,9 +31,9 @@ func TestInitSync(t *testing.T) {
 	}
 	c := &cache.Cache{Lib: &cache.Library{}}
 	initSync(c, itemsRes)
-	assertEq(t, c, "cache.Lib.Version", uint(1337))
-	assertEq(t, c, "cache.Lib.Items[0].Key", "item1")
-	assertEq(t, c, "cache.Lib.Items[0].Attachments[0].Key", "item2")
+	assertEqNest(t, c, "cache.Lib.Version", uint(1337))
+	assertEqNest(t, c, "cache.Lib.Items[0].Key", "item1")
+	assertEqNest(t, c, "cache.Lib.Items[0].Attachments[0].Key", "item2")
 }
 
 func TestInitSyncInv(t *testing.T) {
@@ -60,9 +60,9 @@ func TestInitSyncInv(t *testing.T) {
 	}
 	c := &cache.Cache{Lib: &cache.Library{}}
 	initSync(c, itemsRes)
-	assertEq(t, c, "cache.Lib.Version", uint(1337))
-	assertEq(t, c, "cache.Lib.Items[0].Key", "item1")
-	assertEq(t, c, "cache.Lib.Items[0].Attachments[0].Key", "item2")
+	assertEqNest(t, c, "cache.Lib.Version", uint(1337))
+	assertEqNest(t, c, "cache.Lib.Items[0].Key", "item1")
+	assertEqNest(t, c, "cache.Lib.Items[0].Attachments[0].Key", "item2")
 }
 
 func TestInitSyncMultiAttach(t *testing.T) {
@@ -97,7 +97,7 @@ func TestInitSyncMultiAttach(t *testing.T) {
 	}
 	c := &cache.Cache{Lib: &cache.Library{}}
 	initSync(c, itemsRes)
-	assertEq(t, c, "cache.Lib.Items[0].Key", "item1")
-	assertEq(t, c, "cache.Lib.Items[0].Attachments[0].Key", "item2")
-	assertEq(t, c, "cache.Lib.Items[0].Attachments[1].Key", "item3")
+	assertEqNest(t, c, "cache.Lib.Items[0].Key", "item1")
+	assertEqNest(t, c, "cache.Lib.Items[0].Attachments[0].Key", "item2")
+	assertEqNest(t, c, "cache.Lib.Items[0].Attachments[1].Key", "item3")
 }
