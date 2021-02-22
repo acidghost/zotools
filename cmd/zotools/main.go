@@ -11,8 +11,9 @@ import (
 
 var (
 	bold  = color.New(color.Bold).SprintFunc()
-	green = color.New(color.FgGreen).SprintFunc()
 	blue  = color.New(color.FgBlue).SprintFunc()
+	green = color.New(color.FgGreen).SprintFunc()
+	red   = color.New(color.FgRed).SprintFunc()
 )
 
 const Banner = `                  __                 ___             

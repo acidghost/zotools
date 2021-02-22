@@ -13,7 +13,6 @@ import (
 
 	. "github.com/acidghost/zotools/internal/cache"
 	"github.com/acidghost/zotools/internal/zotero"
-	"github.com/fatih/color"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
@@ -91,7 +90,6 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	}
 
 	fmt.Printf("Loaded cache, version %d, %d items\n", cache.Lib.Version, len(cache.Lib.Items))
-	fmt.Printf("Running search for term '%s'\n", blue(search))
 
 	wgMatchers := sync.WaitGroup{}
 	itemsCh := make(chan StoredItem)
@@ -121,11 +119,19 @@ func (c *SearchCommand) Run(args []string, config Config) {
 
 	// Printer job, receives from the matchers
 	go func() {
+		var i uint
 		for item := range matchedCh {
-			fmt.Printf("%s (%s)\n", bold(green(item.Title)), authorsToString(item.Creators))
+			fmt.Print(bold(green(item.Title)))
+			if len(item.Creators) > 0 {
+				fmt.Printf(" (%s)\n", authorsToString(item.Creators))
+			} else {
+				fmt.Println()
+			}
 			for _, attach := range item.Attachments {
 				path := filepath.Join(config.Zotero, "storage", attach.Key, attach.Filename)
-				color.Blue(path)
+				ns := fmt.Sprintf("%3d)", i)
+				fmt.Printf("%s %s\n", red(ns), blue(path))
+				i++
 			}
 		}
 		printerDone <- struct{}{}
@@ -197,7 +203,19 @@ func (m *matcher) matchAuthors(authors []zotero.Creator) bool {
 func authorsToString(authors []zotero.Creator) string {
 	names := make([]string, 0, len(authors))
 	for _, author := range authors {
-		names = append(names, fmt.Sprintf("%s %s", author.FirstName, author.LastName))
+		var initials string
+		if len(author.FirstName) > 0 {
+			initials = authorInitials(author.FirstName) + " "
+		}
+		names = append(names, initials+author.LastName)
 	}
 	return strings.Join(names, ", ")
+}
+
+func authorInitials(name string) string {
+	initials := make([]string, 0)
+	for _, n := range strings.Split(name, " ") {
+		initials = append(initials, n[:1]+".")
+	}
+	return strings.Join(initials, " ")
 }
