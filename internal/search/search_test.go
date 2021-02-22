@@ -1,9 +1,10 @@
-package main
+package search
 
 import (
 	"regexp"
 	"testing"
 
+	"github.com/acidghost/zotools/internal/testutils"
 	"golang.org/x/text/transform"
 )
 
@@ -21,6 +22,6 @@ func TestMatcherTransform(t *testing.T) {
 		re := regexp.MustCompile(v)
 		m := newMatcher(re)
 		transformed, _, _ := transform.String(*m.tr, v)
-		assertEq(t, transformed, exp)
+		testutils.AssertEq(t, transformed, exp)
 	}
 }

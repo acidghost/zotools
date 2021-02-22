@@ -1,9 +1,10 @@
-package main
+package sync
 
 import (
 	"testing"
 
-	"github.com/acidghost/zotools/internal/cache"
+	"github.com/acidghost/zotools/internal/common"
+	"github.com/acidghost/zotools/internal/testutils"
 	"github.com/acidghost/zotools/internal/zotero"
 )
 
@@ -29,11 +30,11 @@ func TestInitSync(t *testing.T) {
 			},
 		},
 	}
-	c := &cache.Cache{Lib: &cache.Library{}}
-	initSync(c, itemsRes)
-	assertEqNest(t, c, "cache.Lib.Version", uint(1337))
-	assertEqNest(t, c, "cache.Lib.Items[0].Key", "item1")
-	assertEqNest(t, c, "cache.Lib.Items[0].Attachments[0].Key", "item2")
+	s := &common.Storage{Lib: common.Library{}}
+	initSync(s, itemsRes)
+	testutils.AssertEqNest(t, s, "s.Lib.Version", uint(1337))
+	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Key", "item1")
+	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Attachments[0].Key", "item2")
 }
 
 func TestInitSyncInv(t *testing.T) {
@@ -58,11 +59,11 @@ func TestInitSyncInv(t *testing.T) {
 			},
 		},
 	}
-	c := &cache.Cache{Lib: &cache.Library{}}
-	initSync(c, itemsRes)
-	assertEqNest(t, c, "cache.Lib.Version", uint(1337))
-	assertEqNest(t, c, "cache.Lib.Items[0].Key", "item1")
-	assertEqNest(t, c, "cache.Lib.Items[0].Attachments[0].Key", "item2")
+	s := &common.Storage{Lib: common.Library{}}
+	initSync(s, itemsRes)
+	testutils.AssertEqNest(t, s, "s.Lib.Version", uint(1337))
+	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Key", "item1")
+	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Attachments[0].Key", "item2")
 }
 
 func TestInitSyncMultiAttach(t *testing.T) {
@@ -95,9 +96,9 @@ func TestInitSyncMultiAttach(t *testing.T) {
 			},
 		},
 	}
-	c := &cache.Cache{Lib: &cache.Library{}}
-	initSync(c, itemsRes)
-	assertEqNest(t, c, "cache.Lib.Items[0].Key", "item1")
-	assertEqNest(t, c, "cache.Lib.Items[0].Attachments[0].Key", "item2")
-	assertEqNest(t, c, "cache.Lib.Items[0].Attachments[1].Key", "item3")
+	s := &common.Storage{Lib: common.Library{}}
+	initSync(s, itemsRes)
+	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Key", "item1")
+	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Attachments[0].Key", "item2")
+	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Attachments[1].Key", "item3")
 }

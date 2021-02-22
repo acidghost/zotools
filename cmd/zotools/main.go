@@ -1,22 +1,23 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 
+	. "github.com/acidghost/zotools/internal/common"
+	"github.com/acidghost/zotools/internal/search"
+	"github.com/acidghost/zotools/internal/sync"
 	"github.com/fatih/color"
 )
 
-var (
-	bold  = color.New(color.Bold).SprintFunc()
-	blue  = color.New(color.FgBlue).SprintFunc()
-	green = color.New(color.FgGreen).SprintFunc()
-	red   = color.New(color.FgRed).SprintFunc()
+const (
+	searchCmd = "search"
+	syncCmd   = "sync"
 )
 
-const Banner = `                  __                 ___             
+var bannerColor = color.New(color.FgHiGreen)
+var banner = `                  __                 ___
                  /\ \__             /\_ \            
      ____     ___\ \ ,_\   ___    __\//\ \     ____  
     /\_ ,` + "`" + `\  / __` + "`" + `\ \ \/  / __` + "`" + `\ / __` + "`" + `\ \ \   /',__\ 
@@ -25,12 +26,12 @@ const Banner = `                  __                 ___
       \/____/\/___/  \/__/\/___/ \/___/\/____/\/___/ 
 `
 
-const UsageFmt = `Usage: %[1]s [OPTIONS] command
+const usageFmt = `Usage: %[1]s [OPTIONS] command
 
 Available commands:
-  - sync
+  - %[2]s
         download items from Zotero server and update local cache
-  - search
+  - %[3]s
         search for items
 
 For help on a specific command try: %[1]s command -h
@@ -38,41 +39,33 @@ For help on a specific command try: %[1]s command -h
 Common options:
 `
 
-func Usage() {
-	fmt.Fprintf(flag.CommandLine.Output(), green(Banner)+"\n\n"+UsageFmt, os.Args[0])
+func usage() {
+	b := bannerColor.Sprint(banner)
+	fmt.Fprintf(flag.CommandLine.Output(), b+"\n\n"+usageFmt, os.Args[0], syncCmd, searchCmd)
 	flag.PrintDefaults()
 }
 
-type Config struct {
-	Key    string
-	Zotero string
-	Cache  string
-}
-
-type Command interface {
+type command interface {
 	Run([]string, Config)
-	Name() string
 }
 
 func main() {
 	flagConfig := flag.String("config", "", "configuration JSON file (overwrites ZOTOOLS)")
 	flagNoColor := flag.Bool("no-color", false, "disable color output")
-	flag.Usage = Usage
+	flag.Usage = usage
 	flag.Parse()
 
 	color.NoColor = *flagNoColor
 
-	cmds := []Command{NewSyncCommand(), NewSearchCommand()}
-
 	// Get remaining arguments that are not part of the root group
 	args := os.Args[len(os.Args)-flag.NArg():]
 	if len(args) < 1 {
-		Usage()
+		usage()
 		os.Exit(1)
 	}
 
 	if args[0] == "help" {
-		Usage()
+		usage()
 		os.Exit(0)
 	}
 
@@ -88,22 +81,18 @@ func main() {
 		configPath = *flagConfig
 	}
 
-	configBytes, err := os.ReadFile(configPath)
-	if err != nil {
-		Dief("Failed to read config file:\n - %v\n", err)
+	config := LoadConfig(configPath)
+
+	banner := bannerColor.Sprint(banner)
+	var cmd command
+	switch args[0] {
+	case syncCmd:
+		cmd = sync.New(args[0])
+	case searchCmd:
+		cmd = search.New(args[0], banner)
+	default:
+		Dief("Command not recognized\n")
 	}
 
-	var config Config
-	if err := json.Unmarshal(configBytes, &config); err != nil {
-		Dief("Failed to parse config JSON from %s: %v\n", *flagConfig, err)
-	}
-
-	for _, cmd := range cmds {
-		if cmd.Name() == args[0] {
-			cmd.Run(args[1:], config)
-			os.Exit(0)
-		}
-	}
-
-	Dief("Command not recognized\n")
+	cmd.Run(args[1:], config)
 }

@@ -1,4 +1,4 @@
-package main
+package search
 
 import (
 	"flag"
@@ -11,8 +11,9 @@ import (
 	"sync"
 	"unicode"
 
-	. "github.com/acidghost/zotools/internal/cache"
+	. "github.com/acidghost/zotools/internal/common"
 	"github.com/acidghost/zotools/internal/zotero"
+	"github.com/fatih/color"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
@@ -31,6 +32,12 @@ Command specific arguments and options:
 
 var numCPU = runtime.NumCPU()
 
+var (
+	titleColor  = color.New(color.FgGreen, color.Bold)
+	selColor    = color.New(color.FgMagenta)
+	attachColor = color.New(color.FgBlue)
+)
+
 type SearchCommand struct {
 	fs           *flag.FlagSet
 	flagAbstract *bool
@@ -39,24 +46,20 @@ type SearchCommand struct {
 	flagPar      *uint
 }
 
-func NewSearchCommand() *SearchCommand {
-	fs := flag.NewFlagSet("search", flag.ExitOnError)
+func New(cmd, banner string) *SearchCommand {
+	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
 	flagAbstract := fs.Bool("abs", false, "search also in the abstract")
 	flagAuthors := fs.Bool("auth", false, "search also among the authors")
 	flagSens := fs.Bool("s", false, "regular expression is case sensitive")
 	flagPar := fs.Uint("j", uint(numCPU),
 		fmt.Sprintf("number of search jobs (between 1 and %d)", numCPU))
 	fs.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), green(Banner)+"\n\n"+SearchUsageFmt, os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), banner+"\n\n"+SearchUsageFmt, os.Args[0])
 		flag.PrintDefaults()
 		fmt.Fprintf(flag.CommandLine.Output(), SearchUsageFmtOpts)
 		fs.PrintDefaults()
 	}
 	return &SearchCommand{fs, flagAbstract, flagAuthors, flagSens, flagPar}
-}
-
-func (c *SearchCommand) Name() string {
-	return c.fs.Name()
 }
 
 func (c *SearchCommand) Run(args []string, config Config) {
@@ -84,16 +87,17 @@ func (c *SearchCommand) Run(args []string, config Config) {
 		Dief("Wrong search: %v\n", err)
 	}
 
-	cache, err := Load(config.Cache)
-	if err != nil {
-		Dief("Failed to load the local cache:\n - %v\n", err)
+	storage := NewStorage(config.Storage)
+	if err := storage.Load(); err != nil {
+		Dief("Failed to load the local storage:\n - %v\n", err)
 	}
 
-	fmt.Printf("Loaded cache, version %d, %d items\n", cache.Lib.Version, len(cache.Lib.Items))
+	fmt.Printf("Loaded storage, version %d, %d items\n",
+		storage.Lib.Version, len(storage.Lib.Items))
 
 	wgMatchers := sync.WaitGroup{}
-	itemsCh := make(chan StoredItem)
-	matchedCh := make(chan StoredItem)
+	itemsCh := make(chan Item)
+	matchedCh := make(chan Item)
 	printerDone := make(chan struct{})
 
 	// Start matcher jobs
@@ -121,7 +125,7 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	go func() {
 		var i uint
 		for item := range matchedCh {
-			fmt.Print(bold(green(item.Title)))
+			titleColor.Print(item.Title)
 			if len(item.Creators) > 0 {
 				fmt.Printf(" (%s)\n", authorsToString(item.Creators))
 			} else {
@@ -130,7 +134,7 @@ func (c *SearchCommand) Run(args []string, config Config) {
 			for _, attach := range item.Attachments {
 				path := filepath.Join(config.Zotero, "storage", attach.Key, attach.Filename)
 				ns := fmt.Sprintf("%3d)", i)
-				fmt.Printf("%s %s\n", red(ns), blue(path))
+				fmt.Printf("%s %s\n", selColor.Sprint(ns), attachColor.Sprint(path))
 				i++
 			}
 		}
@@ -138,7 +142,7 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	}()
 
 	// Send all items to matchers
-	for _, item := range cache.Lib.Items {
+	for _, item := range storage.Lib.Items {
 		itemsCh <- item
 	}
 
@@ -148,7 +152,7 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	<-printerDone
 }
 
-func (c *SearchCommand) matchItem(m *matcher, item *StoredItem) bool {
+func (c *SearchCommand) matchItem(m *matcher, item *Item) bool {
 	match := m.match(item.Title)
 	if *c.flagAbstract {
 		if *c.flagAuthors {

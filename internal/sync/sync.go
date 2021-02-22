@@ -1,11 +1,12 @@
-package main
+package sync
 
 import (
 	"flag"
 	"fmt"
 	"os"
 
-	. "github.com/acidghost/zotools/internal/cache"
+	"github.com/acidghost/zotools/internal/common"
+	. "github.com/acidghost/zotools/internal/common"
 	"github.com/acidghost/zotools/internal/zotero"
 )
 
@@ -13,20 +14,24 @@ type SyncCommand struct {
 	fs *flag.FlagSet
 }
 
-func NewSyncCommand() *SyncCommand {
-	fs := flag.NewFlagSet("sync", flag.ExitOnError)
+func New(cmd string) *SyncCommand {
+	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
 	return &SyncCommand{fs}
-}
-
-func (c *SyncCommand) Name() string {
-	return c.fs.Name()
 }
 
 func (c *SyncCommand) Run(args []string, config Config) {
 	c.fs.Parse(args)
-	cache, err := Load(config.Cache)
-	if err != nil {
-		Dief("Failed to load the local cache:\n - %v\n", err)
+
+	exists := true
+	if _, err := os.Stat(config.Storage); err != nil && os.IsNotExist(err) {
+		exists = false
+	}
+
+	storage := common.NewStorage(config.Storage)
+	if exists {
+		if err := storage.Load(); err != nil {
+			Dief("Failed to load the local storage:\n - %v\n", err)
+		}
 	}
 
 	zot, err := zotero.New(config.Key)
@@ -34,29 +39,18 @@ func (c *SyncCommand) Run(args []string, config Config) {
 		Dief("Failed to initialize Zotero API:\n - %v\n", err)
 	}
 
-	if cache.Lib.Version == 0 {
+	if storage.Lib.Version == 0 {
 		// Initial sync queries all the items
-
-		dropCache := func() {
-			err := cache.Drop()
-			if err != nil {
-				Eprintf("Cache was not successfully deleted:\n - %v\n", err)
-			}
-			os.Exit(1)
-		}
-
 		items, err := zot.AllItems()
 		if err != nil {
-			Eprintf("Failed to load items:\n - %v\n", err)
-			dropCache()
+			Dief("Failed to load items:\n - %v\n", err)
 		}
 
-		initSync(cache, items)
-		fmt.Printf("Retrived %d top level items\n", len(cache.Lib.Items))
+		initSync(&storage, items)
+		fmt.Printf("Retrived %d top level items\n", len(storage.Lib.Items))
 
-		if err := cache.PersistLibrary(); err != nil {
-			Eprintf("Failed to persist library:\n - %v\n", err)
-			dropCache()
+		if err := storage.PersistLibrary(); err != nil {
+			Dief("Failed to persist library:\n - %v\n", err)
 		}
 
 		println("Library persisted!")
@@ -66,8 +60,8 @@ func (c *SyncCommand) Run(args []string, config Config) {
 	}
 }
 
-func initSync(cache *Cache, items zotero.ItemsResult) {
-	byKey := make(map[string]StoredItem)
+func initSync(storage *Storage, items zotero.ItemsResult) {
+	byKey := make(map[string]Item)
 	for _, item := range items.Items {
 		if item.Data.ParentKey != "" {
 			attach := Attachment{
@@ -80,14 +74,14 @@ func initSync(cache *Cache, items zotero.ItemsResult) {
 				parent.Attachments = append(parent.Attachments, attach)
 				byKey[item.Data.ParentKey] = parent
 			} else {
-				byKey[item.Data.ParentKey] = StoredItem{
+				byKey[item.Data.ParentKey] = Item{
 					Attachments: []Attachment{attach},
 				}
 			}
 		} else {
 			if existing, exists := byKey[item.Key]; exists {
 				// Already present, only attachments
-				byKey[item.Key] = StoredItem{
+				byKey[item.Key] = Item{
 					Key:         item.Key,
 					Version:     item.Version,
 					Title:       item.Data.Title,
@@ -96,7 +90,7 @@ func initSync(cache *Cache, items zotero.ItemsResult) {
 					Attachments: existing.Attachments,
 				}
 			} else {
-				byKey[item.Key] = StoredItem{
+				byKey[item.Key] = Item{
 					Key:         item.Key,
 					Version:     item.Version,
 					Title:       item.Data.Title,
@@ -108,9 +102,9 @@ func initSync(cache *Cache, items zotero.ItemsResult) {
 		}
 	}
 
-	cache.Lib.Version = items.Version
-	cache.Lib.Items = make([]StoredItem, 0, len(byKey))
+	storage.Lib.Version = items.Version
+	storage.Lib.Items = make([]Item, 0, len(byKey))
 	for _, item := range byKey {
-		cache.Lib.Items = append(cache.Lib.Items, item)
+		storage.Lib.Items = append(storage.Lib.Items, item)
 	}
 }

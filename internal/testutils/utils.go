@@ -1,4 +1,4 @@
-package main
+package testutils
 
 import (
 	"container/list"
@@ -9,15 +9,6 @@ import (
 	"strconv"
 	"testing"
 )
-
-type Book struct {
-	Title    string
-	Editions []Edition
-}
-
-type Edition struct {
-	Year int
-}
 
 type evalExprOp interface {
 	Do(from reflect.Value) reflect.Value
@@ -93,7 +84,7 @@ func evalExpr(exprStr string, obj interface{}) (interface{}, error) {
 	return value.Interface(), nil
 }
 
-func assertEqNest(t *testing.T, base interface{}, expr string, expected interface{}) {
+func AssertEqNest(t *testing.T, base interface{}, expr string, expected interface{}) {
 	v, err := evalExpr(expr, base)
 	if err != nil {
 		panic(err)
@@ -104,7 +95,7 @@ func assertEqNest(t *testing.T, base interface{}, expr string, expected interfac
 	}
 }
 
-func assertEq(t *testing.T, value, expected interface{}) {
+func AssertEq(t *testing.T, value, expected interface{}) {
 	if value != expected {
 		t.Helper()
 		t.Errorf("%[1]T(%[1]v) != %[2]T(%[2]v)", value, expected)
