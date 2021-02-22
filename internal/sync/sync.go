@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/acidghost/zotools/internal/common"
 	. "github.com/acidghost/zotools/internal/common"
 	"github.com/acidghost/zotools/internal/zotero"
 )
@@ -27,7 +26,7 @@ func (c *SyncCommand) Run(args []string, config Config) {
 		exists = false
 	}
 
-	storage := common.NewStorage(config.Storage)
+	storage := NewStorage(config.Storage)
 	if exists {
 		if err := storage.Load(); err != nil {
 			Dief("Failed to load the local storage:\n - %v\n", err)
