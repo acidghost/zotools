@@ -1,3 +1,7 @@
+// (c) Copyright 2021, zotools' Authors.
+//
+// Licensed under the terms of the GNU GPL License version 3.
+
 package testutils
 
 import "testing"
