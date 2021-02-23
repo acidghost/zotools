@@ -10,7 +10,12 @@ import (
 
 type Storage struct {
 	filename string
-	Lib      Library
+	Data     StoredData
+}
+
+type StoredData struct {
+	Lib    Library
+	Search *SearchResults
 }
 
 type Library struct {
@@ -35,8 +40,20 @@ type Attachment struct {
 	Filename    string
 }
 
+type SearchResults struct {
+	Term  string
+	Items []SearchResultsItem
+}
+
+type SearchResultsItem struct {
+	Key      string
+	Filename string
+}
+
 func NewStorage(filename string) Storage {
-	return Storage{filename, Library{0, []Item{}}}
+	var data StoredData
+	data.Lib = Library{0, []Item{}}
+	return Storage{filename, data}
 }
 
 func (s *Storage) Load() error {
@@ -45,15 +62,15 @@ func (s *Storage) Load() error {
 		return fmt.Errorf("could not read storage file %s: %v\n", s.filename, err)
 	}
 
-	if err := json.Unmarshal(storeBytes, &s.Lib); err != nil {
+	if err := json.Unmarshal(storeBytes, &s.Data); err != nil {
 		return fmt.Errorf("failed to read JSON from %s: %v", s.filename, err)
 	}
 
 	return nil
 }
 
-func (s *Storage) PersistLibrary() error {
-	serialized, err := json.Marshal(s.Lib)
+func (s *Storage) Persist() error {
+	serialized, err := json.Marshal(s.Data)
 	if err != nil {
 		return fmt.Errorf("failed to serialize library as JSON: %v", err)
 	}

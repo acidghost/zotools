@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/acidghost/zotools/internal/act"
 	. "github.com/acidghost/zotools/internal/common"
 	"github.com/acidghost/zotools/internal/search"
 	"github.com/acidghost/zotools/internal/sync"
@@ -12,6 +13,7 @@ import (
 )
 
 const (
+	actCmd    = "act"
 	searchCmd = "search"
 	syncCmd   = "sync"
 )
@@ -26,13 +28,15 @@ var banner = `                  __                 ___
       \/____/\/___/  \/__/\/___/ \/___/\/____/\/___/ 
 `
 
-const usageFmt = `Usage: %[1]s [OPTIONS] command
+const usageFmt = `Usage: %[1]s ` + OptionsUsage + ` command
 
 Available commands:
   - %[2]s
         download items from Zotero server and update local cache
   - %[3]s
         search for items
+  - %[4]s
+        execute an action on previous search results
 
 For help on a specific command try: %[1]s command -h
 
@@ -41,7 +45,8 @@ Common options:
 
 func usage() {
 	b := bannerColor.Sprint(banner)
-	fmt.Fprintf(flag.CommandLine.Output(), b+"\n\n"+usageFmt, os.Args[0], syncCmd, searchCmd)
+	fmt.Fprintf(flag.CommandLine.Output(), b+"\n\n"+usageFmt, os.Args[0],
+		syncCmd, searchCmd, actCmd)
 	flag.PrintDefaults()
 }
 
@@ -86,10 +91,12 @@ func main() {
 	banner := bannerColor.Sprint(banner)
 	var cmd command
 	switch args[0] {
-	case syncCmd:
-		cmd = sync.New(args[0])
+	case actCmd:
+		cmd = act.New(args[0], banner)
 	case searchCmd:
 		cmd = search.New(args[0], banner)
+	case syncCmd:
+		cmd = sync.New(args[0], banner)
 	default:
 		Dief("Command not recognized\n")
 	}

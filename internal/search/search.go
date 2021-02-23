@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -19,14 +18,9 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-const SearchUsageFmt = `Usage: %s [OPTIONS] search [OPTIONS] search-regexp
+const searchUsageTop = " " + OptionsUsage + " search-regexp"
 
-Common options:
-`
-
-const SearchUsageFmtOpts = `
-Command specific arguments and options:
-  search-regexp
+const searchUsageBottom = `  search-regexp
         regexp to search for in the library (case-insensitive, in title)
 `
 
@@ -53,12 +47,7 @@ func New(cmd, banner string) *SearchCommand {
 	flagSens := fs.Bool("s", false, "regular expression is case sensitive")
 	flagPar := fs.Uint("j", uint(numCPU),
 		fmt.Sprintf("number of search jobs (between 1 and %d)", numCPU))
-	fs.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), banner+"\n\n"+SearchUsageFmt, os.Args[0])
-		flag.PrintDefaults()
-		fmt.Fprintf(flag.CommandLine.Output(), SearchUsageFmtOpts)
-		fs.PrintDefaults()
-	}
+	fs.Usage = MakeUsage(fs, cmd, banner, searchUsageTop, searchUsageBottom)
 	return &SearchCommand{fs, flagAbstract, flagAuthors, flagSens, flagPar}
 }
 
@@ -93,12 +82,12 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	}
 
 	fmt.Printf("Loaded storage, version %d, %d items\n",
-		storage.Lib.Version, len(storage.Lib.Items))
+		storage.Data.Lib.Version, len(storage.Data.Lib.Items))
 
 	wgMatchers := sync.WaitGroup{}
 	itemsCh := make(chan Item)
 	matchedCh := make(chan Item)
-	printerDone := make(chan struct{})
+	resCh := make(chan SearchResults)
 
 	// Start matcher jobs
 	for i := 0; i < par; i++ {
@@ -123,6 +112,7 @@ func (c *SearchCommand) Run(args []string, config Config) {
 
 	// Printer job, receives from the matchers
 	go func() {
+		res := SearchResults{Term: search, Items: make([]SearchResultsItem, 0, 10)}
 		var i uint
 		for item := range matchedCh {
 			titleColor.Print(item.Title)
@@ -132,24 +122,30 @@ func (c *SearchCommand) Run(args []string, config Config) {
 				fmt.Println()
 			}
 			for _, attach := range item.Attachments {
-				path := filepath.Join(config.Zotero, "storage", attach.Key, attach.Filename)
+				path := MakePath(config.Zotero, attach.Key, attach.Filename)
 				ns := fmt.Sprintf("%3d)", i)
 				fmt.Printf("%s %s\n", selColor.Sprint(ns), attachColor.Sprint(path))
+				res.Items = append(res.Items,
+					SearchResultsItem{Key: attach.Key, Filename: attach.Filename})
 				i++
 			}
 		}
-		printerDone <- struct{}{}
+		resCh <- res
 	}()
 
 	// Send all items to matchers
-	for _, item := range storage.Lib.Items {
+	for _, item := range storage.Data.Lib.Items {
 		itemsCh <- item
 	}
 
 	// Close to let the matchers know that we're done with the items
 	close(itemsCh)
 	// Wait for printer to be done
-	<-printerDone
+	res := <-resCh
+	storage.Data.Search = &res
+	if err := storage.Persist(); err != nil {
+		Dief("Failed to persist search:\n - %v\n", err)
+	}
 }
 
 func (c *SearchCommand) matchItem(m *matcher, item *Item) bool {

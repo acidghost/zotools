@@ -30,11 +30,11 @@ func TestInitSync(t *testing.T) {
 			},
 		},
 	}
-	s := &common.Storage{Lib: common.Library{}}
-	initSync(s, itemsRes)
-	testutils.AssertEqNest(t, s, "s.Lib.Version", uint(1337))
-	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Key", "item1")
-	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Attachments[0].Key", "item2")
+	s := common.NewStorage("")
+	initSync(&s, itemsRes)
+	testutils.AssertEqNest(t, s, "s.Data.Lib.Version", uint(1337))
+	testutils.AssertEqNest(t, s, "s.Data.Lib.Items[0].Key", "item1")
+	testutils.AssertEqNest(t, s, "s.Data.Lib.Items[0].Attachments[0].Key", "item2")
 }
 
 func TestInitSyncInv(t *testing.T) {
@@ -59,11 +59,11 @@ func TestInitSyncInv(t *testing.T) {
 			},
 		},
 	}
-	s := &common.Storage{Lib: common.Library{}}
-	initSync(s, itemsRes)
-	testutils.AssertEqNest(t, s, "s.Lib.Version", uint(1337))
-	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Key", "item1")
-	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Attachments[0].Key", "item2")
+	s := common.NewStorage("")
+	initSync(&s, itemsRes)
+	testutils.AssertEqNest(t, s, "s.Data.Lib.Version", uint(1337))
+	testutils.AssertEqNest(t, s, "s.Data.Lib.Items[0].Key", "item1")
+	testutils.AssertEqNest(t, s, "s.Data.Lib.Items[0].Attachments[0].Key", "item2")
 }
 
 func TestInitSyncMultiAttach(t *testing.T) {
@@ -96,9 +96,9 @@ func TestInitSyncMultiAttach(t *testing.T) {
 			},
 		},
 	}
-	s := &common.Storage{Lib: common.Library{}}
-	initSync(s, itemsRes)
-	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Key", "item1")
-	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Attachments[0].Key", "item2")
-	testutils.AssertEqNest(t, s, "s.Lib.Items[0].Attachments[1].Key", "item3")
+	s := common.NewStorage("")
+	initSync(&s, itemsRes)
+	testutils.AssertEqNest(t, s, "s.Data.Lib.Items[0].Key", "item1")
+	testutils.AssertEqNest(t, s, "s.Data.Lib.Items[0].Attachments[0].Key", "item2")
+	testutils.AssertEqNest(t, s, "s.Data.Lib.Items[0].Attachments[1].Key", "item3")
 }

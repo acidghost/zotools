@@ -9,13 +9,18 @@ import (
 	"github.com/acidghost/zotools/internal/zotero"
 )
 
+const syncUsageTop = " " + OptionsUsage
+
 type SyncCommand struct {
-	fs *flag.FlagSet
+	fs       *flag.FlagSet
+	flagDrop *bool
 }
 
-func New(cmd string) *SyncCommand {
+func New(cmd, banner string) *SyncCommand {
 	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
-	return &SyncCommand{fs}
+	flagDrop := fs.Bool("drop", false, "delete storage and start fresh")
+	fs.Usage = MakeUsage(fs, cmd, banner, syncUsageTop, "")
+	return &SyncCommand{fs, flagDrop}
 }
 
 func (c *SyncCommand) Run(args []string, config Config) {
@@ -27,7 +32,11 @@ func (c *SyncCommand) Run(args []string, config Config) {
 	}
 
 	storage := NewStorage(config.Storage)
-	if exists {
+	if *c.flagDrop && exists {
+		if err := storage.Drop(); err != nil {
+			Dief("Failed to drop storage:\n - %v\n", err)
+		}
+	} else if exists {
 		if err := storage.Load(); err != nil {
 			Dief("Failed to load the local storage:\n - %v\n", err)
 		}
@@ -38,7 +47,7 @@ func (c *SyncCommand) Run(args []string, config Config) {
 		Dief("Failed to initialize Zotero API:\n - %v\n", err)
 	}
 
-	if storage.Lib.Version == 0 {
+	if storage.Data.Lib.Version == 0 {
 		// Initial sync queries all the items
 		items, err := zot.AllItems()
 		if err != nil {
@@ -46,9 +55,9 @@ func (c *SyncCommand) Run(args []string, config Config) {
 		}
 
 		initSync(&storage, items)
-		fmt.Printf("Retrived %d top level items\n", len(storage.Lib.Items))
+		fmt.Printf("Retrived %d top level items\n", len(storage.Data.Lib.Items))
 
-		if err := storage.PersistLibrary(); err != nil {
+		if err := storage.Persist(); err != nil {
 			Dief("Failed to persist library:\n - %v\n", err)
 		}
 
@@ -101,9 +110,9 @@ func initSync(storage *Storage, items zotero.ItemsResult) {
 		}
 	}
 
-	storage.Lib.Version = items.Version
-	storage.Lib.Items = make([]Item, 0, len(byKey))
+	storage.Data.Lib.Version = items.Version
+	storage.Data.Lib.Items = make([]Item, 0, len(byKey))
 	for _, item := range byKey {
-		storage.Lib.Items = append(storage.Lib.Items, item)
+		storage.Data.Lib.Items = append(storage.Data.Lib.Items, item)
 	}
 }
