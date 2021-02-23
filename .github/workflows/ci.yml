@@ -1,16 +1,17 @@
 name: zotools-ci
 on:
   push:
-    branches: [ $default-branch ]
+    branches: [main]
   pull_request:
-    branches: [ $default-branch ]
+    branches: [main]
 jobs:
   build-and-test:
     strategy:
       matrix:
         go: [1.16]
-        os: [macos-latest, linux-latest]
-    name: zotools ${{ matrix.os }} / Go ${{ matrix.go }}
+        os: [macos-latest, ubuntu-latest]
+    name: zotools-go-${{ matrix.go }}-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
     - name: Setup Go
