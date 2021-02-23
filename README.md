@@ -1,6 +1,6 @@
 # zotools
 
-[![zotools-ci](https://github.com/acidghost/zotools/actions/workflows/ci.yml/badge.svg)](https://github.com/acidghost/zotools/actions/workflows/ci.yml)
+[![build](https://github.com/acidghost/zotools/actions/workflows/ci.yml/badge.svg)](https://github.com/acidghost/zotools/actions/workflows/ci.yml)
 
 This is a simple collection of tools to operate on a Zotero library.
 
