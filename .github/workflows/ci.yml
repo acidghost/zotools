@@ -11,6 +11,7 @@ jobs:
         go: [1.16]
         os: [macos-latest, linux-latest]
     name: zotools ${{ matrix.os }} / Go ${{ matrix.go }}
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
     - name: Setup Go
