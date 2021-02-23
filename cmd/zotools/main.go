@@ -32,6 +32,9 @@ var banner = `                  __                 ___
       \/____/\/___/  \/__/\/___/ \/___/\/____/\/___/ 
 `
 
+// Set in the Makefile
+var version string
+
 const usageFmt = `Usage: %[1]s ` + OptionsUsage + ` command
 
 Available commands:
@@ -59,12 +62,19 @@ type command interface {
 }
 
 func main() {
+	flagVersion := flag.Bool("V", false, "print version and exit")
 	flagConfig := flag.String("config", "", "configuration JSON file (overwrites ZOTOOLS)")
 	flagNoColor := flag.Bool("no-color", false, "disable color output")
 	flag.Usage = usage
 	flag.Parse()
 
 	color.NoColor = *flagNoColor
+
+	if *flagVersion {
+		bannerColor.Println(banner)
+		color.Blue("     %s\n", version)
+		os.Exit(0)
+	}
 
 	// Get remaining arguments that are not part of the root group
 	args := os.Args[len(os.Args)-flag.NArg():]

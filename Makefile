@@ -3,6 +3,8 @@ BUILD_DIR := ./build
 PREFIX := ~/.local
 BIN_DIR := $(PREFIX)/bin/
 NAME := zotools
+VERSION := $(shell cat ./VERSION)
+COMMIT := $(shell git rev-parse HEAD 2> /dev/null || true)
 
 GO_SRC = $(shell find . -name '*.go')
 
@@ -10,7 +12,10 @@ all: check build
 
 .PHONY: build
 build: $(GO_SRC)
-	$(GO) build -buildmode=pie -o $(BUILD_DIR)/$(NAME) -ldflags="-s -w" ./cmd/zotools
+	$(GO) build \
+		-buildmode=pie -o $(BUILD_DIR)/$(NAME) \
+		-ldflags="-s -w -X main.version=${VERSION}-${COMMIT}" \
+		./cmd/zotools
 
 .PHONY: check
 check: $(GO_SRC)
