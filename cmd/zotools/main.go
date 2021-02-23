@@ -22,8 +22,15 @@ const (
 	syncCmd   = "sync"
 )
 
-var bannerColor = color.New(color.FgHiGreen)
-var banner = `                  __                 ___
+var (
+	bannerC  = color.New(color.FgHiGreen)
+	versionC = color.New(color.FgHiCyan)
+)
+
+// Set in the Makefile
+var version string
+
+const banner = `                  __                 ___
                  /\ \__             /\_ \            
      ____     ___\ \ ,_\   ___    __\//\ \     ____  
     /\_ ,` + "`" + `\  / __` + "`" + `\ \ \/  / __` + "`" + `\ / __` + "`" + `\ \ \   /',__\ 
@@ -32,8 +39,7 @@ var banner = `                  __                 ___
       \/____/\/___/  \/__/\/___/ \/___/\/____/\/___/ 
 `
 
-// Set in the Makefile
-var version string
+const bannerVersionAlign = "     "
 
 const usageFmt = `Usage: %[1]s ` + OptionsUsage + ` command
 
@@ -51,10 +57,14 @@ Common options:
 `
 
 func usage() {
-	b := bannerColor.Sprint(banner)
-	fmt.Fprintf(flag.CommandLine.Output(), b+"\n\n"+usageFmt, os.Args[0],
+	fmt.Fprintf(flag.CommandLine.Output(), makeBanner()+"\n\n"+usageFmt, os.Args[0],
 		syncCmd, searchCmd, actCmd)
 	flag.PrintDefaults()
+}
+
+func makeBanner() string {
+	return fmt.Sprintf("%s\n%s%s", bannerC.Sprint(banner), bannerVersionAlign,
+		versionC.Sprint(version))
 }
 
 type command interface {
@@ -70,9 +80,11 @@ func main() {
 
 	color.NoColor = *flagNoColor
 
+	// Colorize banner only after `color.NoColor` has been set
+	banner := makeBanner()
+
 	if *flagVersion {
-		bannerColor.Println(banner)
-		color.Blue("     %s\n", version)
+		fmt.Println(banner)
 		os.Exit(0)
 	}
 
@@ -102,7 +114,6 @@ func main() {
 
 	config := LoadConfig(configPath)
 
-	banner := bannerColor.Sprint(banner)
 	var cmd command
 	switch args[0] {
 	case actCmd:
