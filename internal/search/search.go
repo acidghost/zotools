@@ -52,6 +52,7 @@ func New(cmd, banner string) *SearchCommand {
 }
 
 func (c *SearchCommand) Run(args []string, config Config) {
+	//nolint:errcheck
 	c.fs.Parse(args)
 	search := c.fs.Arg(0)
 	if search == "" {

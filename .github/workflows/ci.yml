@@ -1,0 +1,27 @@
+name: zotools-ci
+on:
+  push:
+    branches: [$default-branch]
+  pull_request:
+    branches: [$default-branch]
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        go: [1.16]
+        os: [macos-latest, linux-latest]
+    name: zotools ${{ matrix.os }} / Go ${{ matrix.go }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+    - name: Linter
+      uses: golangci/golangci-lint-action@v2
+      with:
+        version: v1.37
+    - name: Build
+      run: make build
+    - name: Tests
+      run: make tests
