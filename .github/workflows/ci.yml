@@ -9,8 +9,8 @@ jobs:
     strategy:
       matrix:
         go: [1.16]
-        os: [macos-latest, linux-latest]
-    name: zotools ${{ matrix.os }} / Go ${{ matrix.go }}
+        os: [macos-latest, ubuntu-latest]
+    name: zotools-go-${{ matrix.go }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
