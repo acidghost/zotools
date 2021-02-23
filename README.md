@@ -5,6 +5,7 @@ This is a simple collection of tools to operate on a Zotero library.
 Commands implemented:
 - `sync`: creates or updates a local cache with useful info from the remote library
 - `search`: searches via regular expression for items in the cached library
+- `act`: performs an action on a selected result from a previous search
 
 ## Usage
 
