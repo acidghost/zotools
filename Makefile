@@ -1,18 +1,34 @@
-all: zotools
+GO ?= go
+BUILD_DIR := ./build
+PREFIX := ~/.local
+BIN_DIR := $(PREFIX)/bin/
+NAME := zotools
 
-.PHONY: zotools
-zotools:
-	go build ./cmd/zotools
+GO_SRC = $(shell find . -name '*.go')
+
+all: check build
+
+.PHONY: build
+build: $(GO_SRC)
+	$(GO) build -buildmode=pie -o $(BUILD_DIR)/$(NAME) -ldflags="-s -w" ./cmd/zotools
+
+.PHONY: check
+check: $(GO_SRC)
+	golangci-lint run
 
 .PHONY: tests
-tests:
-	go test ./...
+tests: $(GO_SRC)
+	$(GO) test ./...
 
 .PHONY: install
 install:
-	go install ./cmd/zotools
+	install -d -m 755 $(BIN_DIR)
+	install -m 755 $(BUILD_DIR)/$(NAME) $(BIN_DIR)
+
+.PHONY: uninstall
+uninstall:
+	rm $(BIN_DIR)/$(NAME)
 
 .PHONY: clean
 clean:
-	go clean
-	$(RM) zotools
+	$(RM) $(BUILD_DIR)

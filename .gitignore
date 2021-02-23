@@ -19,7 +19,6 @@
 /vendor/
 /Godeps/
 
-# End of https://www.toptal.com/developers/gitignore/api/go
-
 /zotools
 config.json
+/build

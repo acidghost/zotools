@@ -30,6 +30,7 @@ func New(cmd, banner string) *ActCommand {
 }
 
 func (c *ActCommand) Run(args []string, config Config) {
+	//nolint:errcheck
 	c.fs.Parse(args)
 
 	storage := NewStorage(config.Storage)

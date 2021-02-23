@@ -24,6 +24,7 @@ func New(cmd, banner string) *SyncCommand {
 }
 
 func (c *SyncCommand) Run(args []string, config Config) {
+	//nolint:errcheck
 	c.fs.Parse(args)
 
 	exists := true
