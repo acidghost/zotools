@@ -1,6 +1,6 @@
 // (c) Copyright 2021, zotools' Authors.
 //
-// Licensed under the terms of the GNU GPL License version 3.
+// Licensed under the terms of the GNU AGPL License version 3.
 
 package search
 
