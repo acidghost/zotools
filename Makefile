@@ -29,6 +29,16 @@ install:
 uninstall:
 	rm $(BIN_DIR)/$(NAME)
 
+.PHONY: banner.txt
+banner.txt:
+	echo -n 'text 0,0 "' > $@
+	toilet -f larry3d $(NAME) | head -n -2 >> $@
+	echo '"' >> $@
+
+logo.png: banner.txt
+	convert -size 360x100 xc:white -transparent white -font "FreeMono" \
+		-pointsize 12 -fill green -draw @$< $@
+
 .PHONY: clean
 clean:
 	$(RM) $(BUILD_DIR)

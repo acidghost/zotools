@@ -1,4 +1,4 @@
-# zotools
+![zotools logo](logo.png)
 
 [![build](https://github.com/acidghost/zotools/actions/workflows/ci.yml/badge.svg)](https://github.com/acidghost/zotools/actions/workflows/ci.yml)
 
