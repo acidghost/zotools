@@ -21,6 +21,5 @@
 
 /zotools
 /build
-/banner.txt
 .coverage
 /test/bats

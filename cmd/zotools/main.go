@@ -5,6 +5,7 @@
 package main
 
 import (
+	_ "embed"
 	"flag"
 	"fmt"
 	"os"
@@ -29,15 +30,8 @@ var (
 
 // Set in the Makefile
 var version string
-
-const banner = `                  __                 ___
-                 /\ \__             /\_ \            
-     ____     ___\ \ ,_\   ___    __\//\ \     ____  
-    /\_ ,` + "`" + `\  / __` + "`" + `\ \ \/  / __` + "`" + `\ / __` + "`" + `\ \ \   /',__\ 
-    \/_/  /_/\ \L\ \ \ \_/\ \L\ /\ \L\ \_\ \_/\__, ` + "`" + `\
-      /\____\ \____/\ \__\ \____\ \____/\____\/\____/
-      \/____/\/___/  \/__/\/___/ \/___/\/____/\/___/ 
-`
+//go:embed banner.txt
+var banner string
 
 const bannerVersionAlign = "     "
 

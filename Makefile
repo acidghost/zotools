@@ -71,13 +71,17 @@ uninstall:
 
 .PHONY: banner.txt
 banner.txt:
+	toilet -f larry3d $(NAME) | head -n -2 > ./cmd/zotools/$@
+
+draw-banner.txt: banner.txt
 	echo -n 'text 0,0 "' > $@
-	toilet -f larry3d $(NAME) | head -n -2 >> $@
+	cat ./cmd/zotools/$< >> $@
 	echo '"' >> $@
 
-logo.png: banner.txt
+logo.png: draw-banner.txt
 	convert -size 360x100 xc:white -transparent white -font "FreeMono" \
 		-pointsize 12 -fill green -draw @$< $@
+	rm $<
 
 .PHONY: clean
 clean:
