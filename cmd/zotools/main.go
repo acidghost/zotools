@@ -28,12 +28,10 @@ var (
 	versionC = color.New(color.FgHiCyan)
 )
 
-// Set in the Makefile
-var version string
+// Updated in the Makefile
+var version = "dev"
 //go:embed banner.txt
 var banner string
-
-const bannerVersionAlign = "     "
 
 const usageFmt = `Usage: %[1]s ` + OptionsUsage + ` command
 
@@ -57,8 +55,7 @@ func usage() {
 }
 
 func makeBanner() string {
-	return fmt.Sprintf("%s\n%s%s", bannerC.Sprint(banner), bannerVersionAlign,
-		versionC.Sprint(version))
+	return fmt.Sprintf("%s\nVer: %s", bannerC.Sprint(banner), versionC.Sprint(version))
 }
 
 type command interface {
