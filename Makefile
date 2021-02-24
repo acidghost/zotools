@@ -1,3 +1,4 @@
+SHELL = /bin/bash
 GO ?= go
 BUILD_DIR := ./build
 PREFIX := ~/.local
@@ -8,22 +9,56 @@ COMMIT := $(shell git rev-parse HEAD 2> /dev/null || true)
 
 GO_SRC = $(shell find . -name '*.go')
 
+COVERAGE_PATH ?= $(shell pwd)/.coverage
+export COVERAGE_PATH
+COVERAGE_FLAGS ?= -covermode=count -coverpkg=./...
+$(shell mkdir -p ${COVERAGE_PATH})
+
 all: check build
 
 .PHONY: build
 build: $(GO_SRC)
 	$(GO) build \
 		-buildmode=pie -o $(BUILD_DIR)/$(NAME) \
-		-ldflags="-s -w -X main.version=${VERSION}-${COMMIT}" \
+		-ldflags="-s -w -X main.version=$(VERSION)-$(COMMIT)" \
+		./cmd/zotools
+
+.PHONY: build.coverage
+build.coverage: $(GO_SRC)
+	$(GO) test \
+		$(COVERAGE_FLAGS) \
+		-tags coverage \
+		-buildmode=pie -c -o $(BUILD_DIR)/$(NAME) \
+		-ldflags="-s -w -X main.version=$(VERSION)-$(COMMIT)" \
 		./cmd/zotools
 
 .PHONY: check
 check: $(GO_SRC)
 	golangci-lint run
 
-.PHONY: tests
-tests: $(GO_SRC)
+.PHONY: test
+test: $(GO_SRC)
 	$(GO) test ./...
+
+.PHONY: test.coverage
+test.coverage: $(GO_SRC)
+	$(GO) test \
+		$(COVERAGE_FLAGS) \
+		-test.coverprofile=coverage.test.txt \
+		-test.outputdir=$(COVERAGE_PATH) \
+		./...
+
+.PHONY: test-integration
+test-integration:
+	bats test/*.bats
+
+.PHONY: test-integration.coverage
+test-integration.coverage:
+	export COVERAGE=1; bats test/*.bats
+
+.PHONY: codecov
+codecov:
+	bash <(curl -s https://codecov.io/bash) -v -s $(COVERAGE_PATH) -f "coverage.*"
 
 .PHONY: install
 install:
@@ -46,4 +81,4 @@ logo.png: banner.txt
 
 .PHONY: clean
 clean:
-	$(RM) $(BUILD_DIR)
+	rm -rf $(BUILD_DIR)

@@ -85,19 +85,19 @@ func main() {
 
 	if *flagVersion {
 		fmt.Println(banner)
-		os.Exit(0)
+		Quit(0)
 	}
 
 	// Get remaining arguments that are not part of the root group
 	args := os.Args[len(os.Args)-flag.NArg():]
 	if len(args) < 1 {
 		usage()
-		os.Exit(1)
+		Quit(1)
 	}
 
 	if args[0] == "help" {
 		usage()
-		os.Exit(0)
+		Quit(0)
 	}
 
 	var configPath string
@@ -123,7 +123,7 @@ func main() {
 	case syncCmd:
 		cmd = sync.New(args[0], banner)
 	default:
-		Dief("Command not recognized\n")
+		Dief("Command '%s' not recognized\n", args[0])
 	}
 
 	cmd.Run(args[1:], config)

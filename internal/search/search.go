@@ -7,7 +7,6 @@ package search
 import (
 	"flag"
 	"fmt"
-	"os"
 	"regexp"
 	"runtime"
 	"strings"
@@ -61,7 +60,7 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	search := c.fs.Arg(0)
 	if search == "" {
 		c.fs.Usage()
-		os.Exit(1)
+		Quit(1)
 	}
 
 	par := int(*c.flagPar)
