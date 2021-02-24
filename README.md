@@ -1,6 +1,7 @@
 ![zotools logo](logo.png)
 
 [![build](https://github.com/acidghost/zotools/actions/workflows/ci.yml/badge.svg)](https://github.com/acidghost/zotools/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/acidghost/zotools/branch/main/graph/badge.svg?token=EXOHWAJHWW)](https://codecov.io/gh/acidghost/zotools)
 
 This is a simple collection of tools to operate on a Zotero library.
 

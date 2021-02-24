@@ -7,7 +7,6 @@ package search
 import (
 	"flag"
 	"fmt"
-	"os"
 	"regexp"
 	"runtime"
 	"strings"
@@ -61,7 +60,7 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	search := c.fs.Arg(0)
 	if search == "" {
 		c.fs.Usage()
-		os.Exit(1)
+		Quit(1)
 	}
 
 	par := int(*c.flagPar)
@@ -150,6 +149,10 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	storage.Data.Search = &res
 	if err := storage.Persist(); err != nil {
 		Dief("Failed to persist search:\n - %v\n", err)
+	}
+
+	if len(storage.Data.Search.Items) == 0 {
+		Quit(1)
 	}
 }
 
