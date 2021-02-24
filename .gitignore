@@ -21,5 +21,6 @@
 
 /zotools
 /build
+/dist
 .coverage
 /test/bats

@@ -1,0 +1,29 @@
+before:
+  hooks:
+    - go mod download
+builds:
+  - main: ./cmd/zotools
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      386: i386
+      amd64: x86_64
+    format: binary
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Version }}-dev-{{ .Commit }}"
+release:
+  name_template: "{{ .Version }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
