@@ -5,19 +5,24 @@ load helpers
 @test "Version" {
     run_zotools -V
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "$VERSION" ]]
 }
 
 @test "No command" {
     run_zotools
     [ "$status" -eq 1 ]
-    [[ "$output" =~ "$VERSION" ]]
+}
+
+@test "Unknown command" {
+    run_zotools unknowncommand
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "Command 'unknowncommand' not recognized" ]]
 }
 
 @test "Help command" {
     run_zotools help
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "$VERSION" ]]
+    local pat='Usage: .+ \[OPTIONS\] command'
+    [[ "$output" =~ $pat ]]
 }
 
 @test "Simple search" {

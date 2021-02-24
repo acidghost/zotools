@@ -1,9 +1,6 @@
 COVERAGE_PATH=${COVERAGE_PATH:-$(pwd)/.coverage}
 ZOTOOLS_BIN=${ZOTOOLS_BIN:-$(pwd)/build/zotools}
 
-VERSION=$(cat VERSION)
-export VERSION
-
 random_string() {
     local length=${1:-10}
 
