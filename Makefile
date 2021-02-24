@@ -50,11 +50,11 @@ test.coverage: $(GO_SRC)
 
 .PHONY: test-integration
 test-integration:
-	bats test/*.bats
+	export PATH=./test/bats/bin:$$PATH; bats test/*.bats
 
 .PHONY: test-integration.coverage
 test-integration.coverage:
-	export COVERAGE=1; bats test/*.bats
+	export PATH=./test/bats/bin:$$PATH; export COVERAGE=1; bats test/*.bats
 
 .PHONY: codecov
 codecov:

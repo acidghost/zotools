@@ -10,9 +10,10 @@ fi
 build_dir=$(mktemp -d)
 git clone https://github.com/bats-core/bats-core "$build_dir"
 
+dir=$(pwd)
 pushd "$build_dir"
 git checkout --detach "$VERSION"
-./install.sh /usr/local
+./install.sh "$dir/test/bats"
 popd
 
 rm -rf "$build_dir"
