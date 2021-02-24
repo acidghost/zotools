@@ -20,7 +20,6 @@
 /Godeps/
 
 /zotools
-/config-template.json
 /build
 /banner.txt
 .coverage
