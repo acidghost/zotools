@@ -33,6 +33,4 @@ jobs:
     - name: Integration tests
       run: make test-integration.coverage
     - name: Codecov
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: make codecov
