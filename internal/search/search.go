@@ -150,6 +150,10 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	if err := storage.Persist(); err != nil {
 		Dief("Failed to persist search:\n - %v\n", err)
 	}
+
+	if len(storage.Data.Search.Items) == 0 {
+		Quit(1)
+	}
 }
 
 func (c *SearchCommand) matchItem(m *matcher, item *Item) bool {
