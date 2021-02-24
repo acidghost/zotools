@@ -1,6 +1,9 @@
 COVERAGE_PATH=${COVERAGE_PATH:-$(pwd)/.coverage}
 ZOTOOLS_BIN=${ZOTOOLS_BIN:-$(pwd)/build/zotools}
 
+VERSION=$(cat VERSION)
+export VERSION
+
 random_string() {
     local length=${1:-10}
 
@@ -16,8 +19,8 @@ run_zotools() {
     args+=("-config=$(pwd)/test/assets/config.json")
     echo "[+] Running $ZOTOOLS_BIN" "${args[@]}" "$*"
     run "$ZOTOOLS_BIN" "${args[@]}" "$@"
+    # shellcheck disable=SC2154
     if [ "$status" -ne 0 ]; then
-        echo "$ZOTOOLS_BIN $args $*"
         echo "$output"
     fi
 }

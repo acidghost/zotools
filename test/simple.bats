@@ -2,6 +2,24 @@
 
 load helpers
 
+@test "Version" {
+    run_zotools -V
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "$VERSION" ]]
+}
+
+@test "No command" {
+    run_zotools
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "$VERSION" ]]
+}
+
+@test "Help command" {
+    run_zotools help
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "$VERSION" ]]
+}
+
 @test "Simple search" {
     run_zotools search learn
     [ "$status" -eq 0 ]
@@ -40,4 +58,35 @@ load helpers
     run_zotools search -s cots
     [ "$status" -eq 1 ]
     [[ ! "$output" =~ "RetroWrite: Statically Instrumenting COTS Binaries for Fuzzing" ]]
+}
+
+@test "Search invalid par" {
+    run_zotools search -j=1337 aflnet
+    [ "$status" -eq 1 ]
+    [[ ! "$output" =~ "AFLNET" ]]
+}
+
+@test "Simple act" {
+    run_zotools search aflnet
+    [ "$status" -eq 0 ]
+    [[ "${lines[@]}" =~ "XZU8ER4Q" ]]
+
+    run_zotools act echo
+    [ "$status" -eq 0 ]
+    [[ "${lines[1]}" =~ "XZU8ER4Q" ]]
+}
+
+@test "Act no command" {
+    run_zotools act
+    [ "$status" -eq 1 ]
+}
+
+@test "Act index out of range" {
+    run_zotools search aflnet
+    [ "$status" -eq 0 ]
+    [[ "${lines[@]}" =~ "XZU8ER4Q" ]]
+
+    run_zotools act -i=42 echo
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "42" ]]
 }
