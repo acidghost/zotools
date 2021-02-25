@@ -25,6 +25,14 @@ load helpers
     [[ "$output" =~ $pat ]]
 }
 
+@test "Config invalid path" {
+    local c=hopefullyanonexistingpath.json
+    CONFIG=$c run_zotools search fuzz
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "Failed to open config file" ]]
+    [[ "$output" =~ "$c" ]]
+}
+
 @test "Config invalid values" {
     cp_config empty
     run_zotools search fuzz

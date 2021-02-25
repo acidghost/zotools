@@ -8,13 +8,17 @@ import (
 	"bytes"
 	"errors"
 	"testing"
+	"testing/iotest"
 
 	"github.com/acidghost/zotools/internal/testutils"
 )
 
+const (
+	testValidConfigJSON = `{"key": "somekey", "storage": "storage.json", "zotero": "zotero"}`
+)
+
 func TestLoadConfig(t *testing.T) {
-	jsonRaw := `{"key": "somekey", "storage": "storage.json", "zotero": "zotero"}`
-	r := bytes.NewReader([]byte(jsonRaw))
+	r := bytes.NewReader([]byte(testValidConfigJSON))
 	c, err := loadConfigReader(r)
 	if err != nil {
 		t.Fail()
@@ -22,6 +26,14 @@ func TestLoadConfig(t *testing.T) {
 	testutils.AssertEq(t, c.Key, "somekey")
 	testutils.AssertEq(t, c.Storage, "storage.json")
 	testutils.AssertEq(t, c.Zotero, "zotero")
+}
+
+func TestLoadConfigReadErr(t *testing.T) {
+	r := iotest.ErrReader(errors.New("some reader error"))
+	_, err := loadConfigReader(r)
+	if err == nil {
+		t.Fail()
+	}
 }
 
 func TestLoadConfigNotJSON(t *testing.T) {
