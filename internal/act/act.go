@@ -7,10 +7,13 @@ package act
 import (
 	"flag"
 	"fmt"
+	"mime"
 	"os"
 	"os/exec"
+	"strings"
 
 	. "github.com/acidghost/zotools/internal/common"
+	"github.com/mattn/go-shellwords"
 )
 
 const actUsageTop = " " + OptionsUsage + " [cmd [arg...]]"
@@ -58,17 +61,45 @@ func (c *ActCommand) Run(args []string, config Config) {
 		Dief("No stored search\n")
 	} else if int(*c.flagIdx) >= len(search.Items) {
 		Dief("Index %d is invalid: search contains %d items\n", *c.flagIdx, len(search.Items))
-	} else if c.fs.NArg() == 0 {
-		Dief("Command is missing\n")
 	}
 
 	item := search.Items[*c.flagIdx]
 	path := MakePath(config.Zotero, item.Key, item.Filename)
 	fmt.Println(path)
 
-	args = c.fs.Args()
-	cmdName := args[0]
-	cmdArgs := append(args[1:], path)
+	var cmdName string
+	var cmdArgs []string
+	if c.fs.NArg() == 0 {
+		extensions, err := mime.ExtensionsByType(item.ContentType)
+		if err != nil {
+			Dief("Could not parse MIME type: %v\n", err)
+		} else if extensions == nil {
+			Dief("Unknown extension for MIME type '%s'\n", item.ContentType)
+		}
+		for _, extension := range extensions {
+			varName := "ZOTOOLS_" + strings.ToUpper(extension[1:])
+			env := os.Getenv(varName)
+			if env != "" {
+				envArgs, err := shellwords.Parse(env)
+				if err != nil {
+					Dief("Failed to parse %s: %v\n", varName, err)
+				}
+				cmdName = envArgs[0]
+				//nolint:gocritic
+				cmdArgs = append(envArgs[1:], path)
+				break
+			}
+		}
+		if cmdName == "" {
+			Dief("Command not found for MIME type '%s'\n", item.ContentType)
+		}
+	} else {
+		args = c.fs.Args()
+		cmdName = args[0]
+		//nolint:gocritic
+		cmdArgs = append(args[1:], path)
+	}
+
 	cmd := exec.Command(cmdName, cmdArgs...)
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {

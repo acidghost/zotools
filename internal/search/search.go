@@ -129,8 +129,11 @@ func (c *SearchCommand) Run(args []string, config Config) {
 				path := MakePath(config.Zotero, attach.Key, attach.Filename)
 				ns := fmt.Sprintf("%3d)", i)
 				fmt.Printf("%s %s\n", selColor.Sprint(ns), attachColor.Sprint(path))
-				res.Items = append(res.Items,
-					SearchResultsItem{Key: attach.Key, Filename: attach.Filename})
+				res.Items = append(res.Items, SearchResultsItem{
+					Key:         attach.Key,
+					Filename:    attach.Filename,
+					ContentType: attach.ContentType,
+				})
 				i++
 			}
 		}

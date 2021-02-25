@@ -50,8 +50,9 @@ type SearchResults struct {
 }
 
 type SearchResultsItem struct {
-	Key      string
-	Filename string
+	Key         string
+	Filename    string
+	ContentType string
 }
 
 func NewStorage(filename string) Storage {
