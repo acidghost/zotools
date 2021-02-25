@@ -2,29 +2,6 @@
 
 load helpers
 
-@test "Version" {
-    run_zotools -V
-    [ "$status" -eq 0 ]
-}
-
-@test "No command" {
-    run_zotools
-    [ "$status" -eq 1 ]
-}
-
-@test "Unknown command" {
-    run_zotools unknowncommand
-    [ "$status" -eq 1 ]
-    [[ "$output" =~ "Command 'unknowncommand' not recognized" ]]
-}
-
-@test "Help command" {
-    run_zotools help
-    [ "$status" -eq 0 ]
-    local pat='Usage: .+ \[OPTIONS\] command'
-    [[ "$output" =~ $pat ]]
-}
-
 @test "Simple search" {
     run_zotools search learn
     [ "$status" -eq 0 ]
@@ -69,29 +46,4 @@ load helpers
     run_zotools search -j=1337 aflnet
     [ "$status" -eq 1 ]
     [[ ! "$output" =~ "AFLNET" ]]
-}
-
-@test "Simple act" {
-    run_zotools search aflnet
-    [ "$status" -eq 0 ]
-    [[ "${lines[@]}" =~ "XZU8ER4Q" ]]
-
-    run_zotools act echo
-    [ "$status" -eq 0 ]
-    [[ "${lines[1]}" =~ "XZU8ER4Q" ]]
-}
-
-@test "Act no command" {
-    run_zotools act
-    [ "$status" -eq 1 ]
-}
-
-@test "Act index out of range" {
-    run_zotools search aflnet
-    [ "$status" -eq 0 ]
-    [[ "${lines[@]}" =~ "XZU8ER4Q" ]]
-
-    run_zotools act -i=42 echo
-    [ "$status" -eq 1 ]
-    [[ "$output" =~ "42" ]]
 }
