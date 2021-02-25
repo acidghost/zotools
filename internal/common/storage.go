@@ -7,6 +7,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/acidghost/zotools/internal/zotero"
@@ -62,31 +63,24 @@ func NewStorage(filename string) Storage {
 }
 
 func (s *Storage) Load() error {
-	storeBytes, err := os.ReadFile(s.filename)
+	storeBytes, err := fs.ReadFile(defaultFS, s.filename)
 	if err != nil {
-		return fmt.Errorf("could not read storage file %s: %v", s.filename, err)
+		return fmt.Errorf("could not read storage file %s: %w", s.filename, err)
 	}
-
 	if err := json.Unmarshal(storeBytes, &s.Data); err != nil {
-		return fmt.Errorf("failed to read JSON from %s: %v", s.filename, err)
+		return fmt.Errorf("failed to read JSON from %s: %w", s.filename, err)
 	}
-
 	return nil
 }
 
 func (s *Storage) Persist() error {
 	serialized, err := json.Marshal(s.Data)
 	if err != nil {
-		return fmt.Errorf("failed to serialize library as JSON: %v", err)
+		return fmt.Errorf("failed to serialize library as JSON: %w", err)
 	}
-	file, err := os.OpenFile(s.filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	err = os.WriteFile(s.filename, serialized, 0644)
 	if err != nil {
-		return fmt.Errorf("could not open storage file %s: %v", s.filename, err)
-	}
-	defer file.Close()
-	_, err = file.Write(serialized)
-	if err != nil {
-		return fmt.Errorf("failed to write to %s: %v", s.filename, err)
+		return fmt.Errorf("failed to write to %s: %w", s.filename, err)
 	}
 	return nil
 }
@@ -94,7 +88,7 @@ func (s *Storage) Persist() error {
 func (s *Storage) Drop() (err error) {
 	err = os.Remove(s.filename)
 	if err != nil {
-		err = fmt.Errorf("failed to delete %s: %v", s.filename, err)
+		err = fmt.Errorf("failed to delete %s: %w", s.filename, err)
 	}
 	return
 }
