@@ -44,13 +44,14 @@ func TestLoadConfigInvalid(t *testing.T) {
 	if errors.As(err, &ec) {
 		found := map[string]bool{"key": false, "zotero": false, "storage": false}
 		for _, err := range ec.errors {
-			if errors.Is(err, ErrConfigEmptyKey) {
+			switch {
+			case errors.Is(err, ErrConfigEmptyKey):
 				found["key"] = true
-			} else if errors.Is(err, ErrConfigEmptyStorage) {
+			case errors.Is(err, ErrConfigEmptyStorage):
 				found["storage"] = true
-			} else if errors.Is(err, ErrConfigEmptyZotero) {
+			case errors.Is(err, ErrConfigEmptyZotero):
 				found["zotero"] = true
-			} else {
+			default:
 				t.Fail()
 			}
 		}
