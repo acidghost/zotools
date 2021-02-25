@@ -6,7 +6,11 @@ package common
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"os"
+	"strings"
 )
 
 type Config struct {
@@ -15,20 +19,64 @@ type Config struct {
 	Storage string
 }
 
+const (
+	configEmptyMsg = "is empty in config"
+)
+
+var (
+	ErrConfigEmptyKey     = errors.New("key " + configEmptyMsg)
+	ErrConfigEmptyZotero  = errors.New("zotero " + configEmptyMsg)
+	ErrConfigEmptyStorage = errors.New("storage " + configEmptyMsg)
+)
+
+type ErrConfig struct {
+	errors []error
+}
+
+func (e *ErrConfig) Error() string {
+	ss := make([]string, 0, len(e.errors))
+	for _, err := range e.errors {
+		ss = append(ss, fmt.Sprintf("- %v", err))
+	}
+	return strings.Join(ss, "\n")
+}
+
 func LoadConfig(path string) Config {
-	configBytes, err := os.ReadFile(path)
+	file, err := os.Open(path)
 	if err != nil {
-		Die("Failed to read config file:\n - %v\n", err)
+		Die("Failed to open config file %q: %v\n", path, err)
 	}
-
-	var config Config
-	if err := json.Unmarshal(configBytes, &config); err != nil {
-		Die("Failed to parse config JSON from %s: %v\n", path, err)
+	config, err := loadConfigReader(file)
+	if err != nil {
+		var ec *ErrConfig
+		if errors.As(err, &ec) {
+			Die("Wrong config values in %q:\n%v\n", path, err)
+		}
+		Die("Failed to load config from %q: %v\n", path, err)
 	}
-
-	if config.Storage == "" {
-		Die("Storage is empty in %s\n", path)
-	}
-
 	return config
+}
+
+func loadConfigReader(r io.Reader) (config Config, err error) {
+	configBytes, err := io.ReadAll(r)
+	if err != nil {
+		return
+	}
+	if err = json.Unmarshal(configBytes, &config); err != nil {
+		return
+	}
+	var ec *ErrConfig = &ErrConfig{make([]error, 0)}
+	if config.Key == "" {
+		ec.errors = append(ec.errors, ErrConfigEmptyKey)
+	}
+	if config.Zotero == "" {
+		ec.errors = append(ec.errors, ErrConfigEmptyZotero)
+	}
+	if config.Storage == "" {
+		ec.errors = append(ec.errors, ErrConfigEmptyStorage)
+	}
+	if len(ec.errors) > 0 {
+		err = ec
+	}
+	return
 }

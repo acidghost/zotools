@@ -25,6 +25,16 @@ load helpers
     [[ "$output" =~ $pat ]]
 }
 
+@test "Config invalid values" {
+    cp_config empty
+    run_zotools search fuzz
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "Wrong config values" ]]
+    [[ "$output" =~ "key is empty" ]]
+    [[ "$output" =~ "storage is empty" ]]
+    [[ "$output" =~ "zotero is empty" ]]
+}
+
 @test "Search-act integration" {
     run_zotools search aflnet
     [ "$status" -eq 0 ]
