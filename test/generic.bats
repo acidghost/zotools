@@ -33,6 +33,20 @@ load helpers
     [[ "$output" =~ "$c" ]]
 }
 
+@test "Config invalid JSON" {
+    local tmp
+    tmp=$(mktemp)
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+    printf "{invalid}" > "$tmp"
+    CONFIG="$tmp" run_zotools search fuzz
+    rm "$tmp"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "Failed to load config" ]]
+    [[ "$output" =~ "$tmp" ]]
+}
+
 @test "Config invalid values" {
     cp_config empty
     run_zotools search fuzz
