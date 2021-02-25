@@ -62,6 +62,18 @@ func TestStoragePersist(t *testing.T) {
 			t.Fatalf("Persisted wrong content: %v", bs)
 		}
 	})
+	t.Run("Not existent folder", func(t *testing.T) {
+		f := filepath.Join(t.TempDir(), "somefolder", "filename.json")
+		s := NewStorage(f)
+		err := s.Persist()
+		if err == nil {
+			t.Fatalf("Expected error")
+		}
+		var pe *fs.PathError
+		if !errors.As(err, &pe) {
+			t.Fatalf("Expected fs.PathError, got: %#v", err)
+		}
+	})
 }
 
 func TestStorageDrop(t *testing.T) {
@@ -94,7 +106,7 @@ func TestStorageDrop(t *testing.T) {
 		}
 		var pe *fs.PathError
 		if !errors.As(err, &pe) {
-			t.Fatalf("Unexpected error: %#v", err)
+			t.Fatalf("Expected fs.PathError, got: %#v", err)
 		}
 	})
 }
