@@ -25,6 +25,38 @@ load helpers
     [[ "$output" =~ $pat ]]
 }
 
+@test "Config invalid path" {
+    local c=hopefullyanonexistingpath.json
+    CONFIG=$c run_zotools search fuzz
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "Failed to open config file" ]]
+    [[ "$output" =~ "$c" ]]
+}
+
+@test "Config invalid JSON" {
+    local tmp
+    tmp=$(mktemp)
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+    printf "{invalid}" > "$tmp"
+    CONFIG="$tmp" run_zotools search fuzz
+    rm "$tmp"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "Failed to load config" ]]
+    [[ "$output" =~ "$tmp" ]]
+}
+
+@test "Config invalid values" {
+    cp_config empty
+    run_zotools search fuzz
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "Wrong config values" ]]
+    [[ "$output" =~ "key is empty" ]]
+    [[ "$output" =~ "storage is empty" ]]
+    [[ "$output" =~ "zotero is empty" ]]
+}
+
 @test "Search-act integration" {
     run_zotools search aflnet
     [ "$status" -eq 0 ]

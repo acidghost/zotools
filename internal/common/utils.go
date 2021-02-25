@@ -7,6 +7,7 @@ package common
 import (
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -15,8 +16,11 @@ import (
 
 var errorP = color.New(color.FgRed)
 
-// Quit enables us to get coverage even when calling `os.Exit`
-var Quit = os.Exit
+var (
+	// Quit enables us to get coverage even when calling `os.Exit`
+	Quit            = os.Exit
+	defaultFS fs.FS = &dummyFS{}
+)
 
 func Eprintf(format string, args ...interface{}) {
 	errorP.Fprintf(os.Stderr, format, args...)
@@ -27,18 +31,24 @@ func Die(format string, args ...interface{}) {
 	Quit(1)
 }
 
+type dummyFS struct{}
+
+func (*dummyFS) Open(name string) (fs.File, error) {
+	return os.Open(name)
+}
+
 const (
 	OptionsUsage = "[OPTIONS]"
 	topUsage     = "Usage: %s " + OptionsUsage + " %s%s\n\nCommon options:\n"
 	bottomUsage  = "\nCommand specific arguments and options:\n"
 )
 
-func MakeUsage(fs *flag.FlagSet, cmd, banner, top, bottom string) func() {
+func MakeUsage(flags *flag.FlagSet, cmd, banner, top, bottom string) func() {
 	return func() {
 		fmt.Fprintf(flag.CommandLine.Output(), banner+"\n\n"+topUsage, os.Args[0], cmd, top)
 		flag.PrintDefaults()
 		fmt.Fprintf(flag.CommandLine.Output(), bottomUsage+bottom)
-		fs.PrintDefaults()
+		flags.PrintDefaults()
 	}
 }
 
