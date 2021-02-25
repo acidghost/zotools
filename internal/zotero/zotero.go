@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	ApiUrl     = "https://api.zotero.org"
-	ApiVersion = uint(3)
+	apiURL     = "https://api.zotero.org"
+	apiVersion = uint(3)
 	MaxLimit   = 100
 )
 
@@ -23,8 +23,8 @@ const (
 	apiVersionHeader = "Zotero-API-Version"
 )
 
-type ApiKey struct {
-	UserId   uint   `json:"userId"`
+type apiKey struct {
+	UserID   uint   `json:"userId"`
 	Username string `json:"username"`
 }
 
@@ -52,16 +52,16 @@ type Creator struct {
 type Zotero struct {
 	key      string
 	client   http.Client
-	UserInfo ApiKey
+	UserInfo apiKey
 }
 
 func setHeaders(req *http.Request, key string) {
-	req.Header.Add(apiVersionHeader, fmt.Sprint(ApiVersion))
+	req.Header.Add(apiVersionHeader, fmt.Sprint(apiVersion))
 	req.Header.Add(authHeader, key)
 }
 
 func New(key string) (*Zotero, error) {
-	req, err := http.NewRequest("GET", ApiUrl+"/keys/current", nil)
+	req, err := http.NewRequest("GET", apiURL+"/keys/current", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request for API key info: %v", err)
 	}
@@ -85,7 +85,7 @@ func New(key string) (*Zotero, error) {
 		return nil, fmt.Errorf("failed to read API key response body: %v", err)
 	}
 
-	var apiKeyInfo ApiKey
+	var apiKeyInfo apiKey
 	if err := json.Unmarshal(respBody, &apiKeyInfo); err != nil {
 		return nil, fmt.Errorf("failed to parse API key info from JSON reply: %v", err)
 	}
@@ -100,30 +100,30 @@ type ItemsResult struct {
 
 func (z *Zotero) Items(start, limit uint) (*ItemsResult, bool, error) {
 	url := fmt.Sprintf("%s/users/%v/items?limit=%v&start=%v",
-		ApiUrl, z.UserInfo.UserId, limit, start)
+		apiURL, z.UserInfo.UserID, limit, start)
 
 	fmt.Printf("Requesting items %s\n", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, false, fmt.Errorf("Failed to create request: %v", err)
+		return nil, false, fmt.Errorf("failed to create request: %v", err)
 	}
 
 	setHeaders(req, z.key)
 
 	resp, err := z.client.Do(req)
 	if err != nil {
-		return nil, false, fmt.Errorf("Failed to send request: %v", err)
+		return nil, false, fmt.Errorf("failed to send request: %v", err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, false, fmt.Errorf("Received %v status code", resp.StatusCode)
+		return nil, false, fmt.Errorf("received %v status code", resp.StatusCode)
 	}
 
 	totalItems, err := strconv.ParseUint(resp.Header.Get("Total-Results"), 10, 64)
 	if err != nil {
-		return nil, false, fmt.Errorf("Failed to parse number of total results from header: %v", err)
+		return nil, false, fmt.Errorf("failed to parse number of total results from header: %v", err)
 	}
 
 	more := uint64(start+limit) < totalItems
@@ -131,17 +131,17 @@ func (z *Zotero) Items(start, limit uint) (*ItemsResult, bool, error) {
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, more, fmt.Errorf("Failed to read reply body: %v", err)
+		return nil, more, fmt.Errorf("failed to read reply body: %v", err)
 	}
 
 	if err := json.Unmarshal(respBody, &items); err != nil {
-		return nil, more, fmt.Errorf("Failed to parse JSON from reply: %v", err)
+		return nil, more, fmt.Errorf("failed to parse JSON from reply: %v", err)
 	}
 
 	versionH := resp.Header.Get("Last-Modified-Version")
 	version, err := strconv.ParseUint(versionH, 10, 64)
 	if err != nil {
-		return nil, more, fmt.Errorf("Failed to parse version from header '%v': %v", versionH, err)
+		return nil, more, fmt.Errorf("failed to parse version from header '%v': %v", versionH, err)
 	}
 
 	return &ItemsResult{items, uint(version)}, more, nil

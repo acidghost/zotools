@@ -15,14 +15,14 @@ import (
 
 var errorP = color.New(color.FgRed)
 
-// This enables us to get coverage even when calling `os.Exit`
+// Quit enables us to get coverage even when calling `os.Exit`
 var Quit = os.Exit
 
 func Eprintf(format string, args ...interface{}) {
 	errorP.Fprintf(os.Stderr, format, args...)
 }
 
-func Dief(format string, args ...interface{}) {
+func Die(format string, args ...interface{}) {
 	Eprintf(format, args...)
 	Quit(1)
 }

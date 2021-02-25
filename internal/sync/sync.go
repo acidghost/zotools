@@ -9,25 +9,25 @@ import (
 	"fmt"
 	"os"
 
-	. "github.com/acidghost/zotools/internal/common"
+	"github.com/acidghost/zotools/internal/common"
 	"github.com/acidghost/zotools/internal/zotero"
 )
 
-const syncUsageTop = " " + OptionsUsage
+const syncUsageTop = " " + common.OptionsUsage
 
-type SyncCommand struct {
+type Command struct {
 	fs       *flag.FlagSet
 	flagDrop *bool
 }
 
-func New(cmd, banner string) *SyncCommand {
+func New(cmd, banner string) *Command {
 	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
 	flagDrop := fs.Bool("drop", false, "delete storage and start fresh")
-	fs.Usage = MakeUsage(fs, cmd, banner, syncUsageTop, "")
-	return &SyncCommand{fs, flagDrop}
+	fs.Usage = common.MakeUsage(fs, cmd, banner, syncUsageTop, "")
+	return &Command{fs, flagDrop}
 }
 
-func (c *SyncCommand) Run(args []string, config Config) {
+func (c *Command) Run(args []string, config common.Config) {
 	//nolint:errcheck
 	c.fs.Parse(args)
 
@@ -36,34 +36,34 @@ func (c *SyncCommand) Run(args []string, config Config) {
 		exists = false
 	}
 
-	storage := NewStorage(config.Storage)
+	storage := common.NewStorage(config.Storage)
 	if *c.flagDrop && exists {
 		if err := storage.Drop(); err != nil {
-			Dief("Failed to drop storage:\n - %v\n", err)
+			common.Die("Failed to drop storage:\n - %v\n", err)
 		}
 	} else if exists {
 		if err := storage.Load(); err != nil {
-			Dief("Failed to load the local storage:\n - %v\n", err)
+			common.Die("Failed to load the local storage:\n - %v\n", err)
 		}
 	}
 
 	zot, err := zotero.New(config.Key)
 	if err != nil {
-		Dief("Failed to initialize Zotero API:\n - %v\n", err)
+		common.Die("Failed to initialize Zotero API:\n - %v\n", err)
 	}
 
 	if storage.Data.Lib.Version == 0 {
 		// Initial sync queries all the items
 		items, err := zot.AllItems()
 		if err != nil {
-			Dief("Failed to load items:\n - %v\n", err)
+			common.Die("Failed to load items:\n - %v\n", err)
 		}
 
 		initSync(&storage, items)
-		fmt.Printf("Retrived %d top level items\n", len(storage.Data.Lib.Items))
+		fmt.Printf("Retrieved %d top level items\n", len(storage.Data.Lib.Items))
 
 		if err := storage.Persist(); err != nil {
-			Dief("Failed to persist library:\n - %v\n", err)
+			common.Die("Failed to persist library:\n - %v\n", err)
 		}
 
 		println("Library persisted!")
@@ -73,11 +73,12 @@ func (c *SyncCommand) Run(args []string, config Config) {
 	}
 }
 
-func initSync(storage *Storage, items zotero.ItemsResult) {
-	byKey := make(map[string]Item)
-	for _, item := range items.Items {
+func initSync(storage *common.Storage, items zotero.ItemsResult) {
+	byKey := make(map[string]common.Item)
+	for i := range items.Items {
+		item := &items.Items[i]
 		if item.Data.ParentKey != "" {
-			attach := Attachment{
+			attach := common.Attachment{
 				Key:         item.Key,
 				Version:     item.Version,
 				ContentType: item.Data.ContentType,
@@ -87,14 +88,14 @@ func initSync(storage *Storage, items zotero.ItemsResult) {
 				parent.Attachments = append(parent.Attachments, attach)
 				byKey[item.Data.ParentKey] = parent
 			} else {
-				byKey[item.Data.ParentKey] = Item{
-					Attachments: []Attachment{attach},
+				byKey[item.Data.ParentKey] = common.Item{
+					Attachments: []common.Attachment{attach},
 				}
 			}
 		} else {
 			if existing, exists := byKey[item.Key]; exists {
 				// Already present, only attachments
-				byKey[item.Key] = Item{
+				byKey[item.Key] = common.Item{
 					Key:         item.Key,
 					Version:     item.Version,
 					Title:       item.Data.Title,
@@ -103,20 +104,20 @@ func initSync(storage *Storage, items zotero.ItemsResult) {
 					Attachments: existing.Attachments,
 				}
 			} else {
-				byKey[item.Key] = Item{
+				byKey[item.Key] = common.Item{
 					Key:         item.Key,
 					Version:     item.Version,
 					Title:       item.Data.Title,
 					Abstract:    item.Data.Abstract,
 					Creators:    item.Data.Creators,
-					Attachments: []Attachment{},
+					Attachments: []common.Attachment{},
 				}
 			}
 		}
 	}
 
 	storage.Data.Lib.Version = items.Version
-	storage.Data.Lib.Items = make([]Item, 0, len(byKey))
+	storage.Data.Lib.Items = make([]common.Item, 0, len(byKey))
 	for _, item := range byKey {
 		storage.Data.Lib.Items = append(storage.Data.Lib.Items, item)
 	}

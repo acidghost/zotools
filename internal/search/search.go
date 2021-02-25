@@ -13,7 +13,7 @@ import (
 	"sync"
 	"unicode"
 
-	. "github.com/acidghost/zotools/internal/common"
+	"github.com/acidghost/zotools/internal/common"
 	"github.com/acidghost/zotools/internal/zotero"
 	"github.com/fatih/color"
 	"golang.org/x/text/runes"
@@ -21,7 +21,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-const searchUsageTop = " " + OptionsUsage + " search-regexp"
+const searchUsageTop = " " + common.OptionsUsage + " search-regexp"
 
 const searchUsageBottom = `  search-regexp
         regexp to search for in the library (case-insensitive, in title)
@@ -35,7 +35,7 @@ var (
 	attachColor = color.New(color.FgBlue)
 )
 
-type SearchCommand struct {
+type Command struct {
 	fs           *flag.FlagSet
 	flagAbstract *bool
 	flagAuthors  *bool
@@ -43,29 +43,29 @@ type SearchCommand struct {
 	flagPar      *uint
 }
 
-func New(cmd, banner string) *SearchCommand {
+func New(cmd, banner string) *Command {
 	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
 	flagAbstract := fs.Bool("abs", false, "search also in the abstract")
 	flagAuthors := fs.Bool("auth", false, "search also among the authors")
 	flagSens := fs.Bool("s", false, "regular expression is case sensitive")
 	flagPar := fs.Uint("j", uint(numCPU),
 		fmt.Sprintf("number of search jobs (between 1 and %d)", numCPU))
-	fs.Usage = MakeUsage(fs, cmd, banner, searchUsageTop, searchUsageBottom)
-	return &SearchCommand{fs, flagAbstract, flagAuthors, flagSens, flagPar}
+	fs.Usage = common.MakeUsage(fs, cmd, banner, searchUsageTop, searchUsageBottom)
+	return &Command{fs, flagAbstract, flagAuthors, flagSens, flagPar}
 }
 
-func (c *SearchCommand) Run(args []string, config Config) {
+func (c *Command) Run(args []string, config common.Config) {
 	//nolint:errcheck
 	c.fs.Parse(args)
 	search := c.fs.Arg(0)
 	if search == "" {
 		c.fs.Usage()
-		Quit(1)
+		common.Quit(1)
 	}
 
 	par := int(*c.flagPar)
 	if par < 1 || par > numCPU {
-		Dief("Number of jobs must be between 1 and %d\n", numCPU)
+		common.Die("Number of jobs must be between 1 and %d\n", numCPU)
 	}
 
 	var reFlags string
@@ -77,21 +77,21 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	}
 	re, err := regexp.Compile(reFlags + search)
 	if err != nil {
-		Dief("Wrong search: %v\n", err)
+		common.Die("Wrong search: %v\n", err)
 	}
 
-	storage := NewStorage(config.Storage)
+	storage := common.NewStorage(config.Storage)
 	if err := storage.Load(); err != nil {
-		Dief("Failed to load the local storage:\n - %v\n", err)
+		common.Die("Failed to load the local storage:\n - %v\n", err)
 	}
 
 	fmt.Printf("Loaded storage, version %d, %d items\n",
 		storage.Data.Lib.Version, len(storage.Data.Lib.Items))
 
 	wgMatchers := sync.WaitGroup{}
-	itemsCh := make(chan Item)
-	matchedCh := make(chan Item)
-	resCh := make(chan SearchResults)
+	itemsCh := make(chan common.Item)
+	matchedCh := make(chan common.Item)
+	resCh := make(chan common.SearchResults)
 
 	// Start matcher jobs
 	for i := 0; i < par; i++ {
@@ -116,7 +116,7 @@ func (c *SearchCommand) Run(args []string, config Config) {
 
 	// Printer job, receives from the matchers
 	go func() {
-		res := SearchResults{Term: search, Items: make([]SearchResultsItem, 0, 10)}
+		res := common.SearchResults{Term: search, Items: make([]common.SearchResultsItem, 0, 10)}
 		var i uint
 		for item := range matchedCh {
 			titleColor.Print(item.Title)
@@ -126,10 +126,10 @@ func (c *SearchCommand) Run(args []string, config Config) {
 				fmt.Println()
 			}
 			for _, attach := range item.Attachments {
-				path := MakePath(config.Zotero, attach.Key, attach.Filename)
+				path := common.MakePath(config.Zotero, attach.Key, attach.Filename)
 				ns := fmt.Sprintf("%3d)", i)
 				fmt.Printf("%s %s\n", selColor.Sprint(ns), attachColor.Sprint(path))
-				res.Items = append(res.Items, SearchResultsItem{
+				res.Items = append(res.Items, common.SearchResultsItem{
 					Key:         attach.Key,
 					Filename:    attach.Filename,
 					ContentType: attach.ContentType,
@@ -151,15 +151,15 @@ func (c *SearchCommand) Run(args []string, config Config) {
 	res := <-resCh
 	storage.Data.Search = &res
 	if err := storage.Persist(); err != nil {
-		Dief("Failed to persist search:\n - %v\n", err)
+		common.Die("Failed to persist search:\n - %v\n", err)
 	}
 
 	if len(storage.Data.Search.Items) == 0 {
-		Quit(1)
+		common.Quit(1)
 	}
 }
 
-func (c *SearchCommand) matchItem(m *matcher, item *Item) bool {
+func (c *Command) matchItem(m *matcher, item *common.Item) bool {
 	match := m.match(item.Title)
 	if *c.flagAbstract {
 		if *c.flagAuthors {

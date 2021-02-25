@@ -64,7 +64,7 @@ func NewStorage(filename string) Storage {
 func (s *Storage) Load() error {
 	storeBytes, err := os.ReadFile(s.filename)
 	if err != nil {
-		return fmt.Errorf("could not read storage file %s: %v\n", s.filename, err)
+		return fmt.Errorf("could not read storage file %s: %v", s.filename, err)
 	}
 
 	if err := json.Unmarshal(storeBytes, &s.Data); err != nil {
@@ -81,7 +81,7 @@ func (s *Storage) Persist() error {
 	}
 	file, err := os.OpenFile(s.filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return fmt.Errorf("could not open storage file %s: %v\n", s.filename, err)
+		return fmt.Errorf("could not open storage file %s: %v", s.filename, err)
 	}
 	defer file.Close()
 	_, err = file.Write(serialized)
