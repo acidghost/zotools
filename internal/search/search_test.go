@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/acidghost/zotools/internal/testutils"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/text/transform"
 )
 
@@ -26,6 +26,6 @@ func TestMatcherTransform(t *testing.T) {
 		re := regexp.MustCompile(v)
 		m := newMatcher(re)
 		transformed, _, _ := transform.String(*m.tr, v)
-		testutils.AssertEq(t, transformed, exp)
+		assert.Equal(t, transformed, exp)
 	}
 }
