@@ -5,13 +5,14 @@
 package common
 
 import (
-	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStorageLoad(t *testing.T) {
@@ -21,11 +22,8 @@ func TestStorageLoad(t *testing.T) {
 		defaultFS = fstest.MapFS(map[string]*fstest.MapFile{})
 		s := NewStorage("filename.json")
 		err := s.Load()
-		if err == nil {
-			t.Fatalf("Expected an error")
-		} else if !strings.Contains(err.Error(), "could not read storage") {
-			t.Fatalf("Did not return the expected error: %#v", err)
-		}
+		var e *errReadStorage
+		assert.ErrorAs(t, err, &e)
 	})
 	t.Run("Invalid JSON", func(t *testing.T) {
 		f := "filename.json"
@@ -34,11 +32,8 @@ func TestStorageLoad(t *testing.T) {
 		})
 		s := NewStorage(f)
 		err := s.Load()
-		if err == nil {
-			t.Fatalf("Expected an error")
-		} else if !strings.Contains(err.Error(), "failed to read JSON") {
-			t.Fatalf("Did not return the expected error")
-		}
+		var e *errNotJSON
+		assert.ErrorAs(t, err, &e)
 	})
 }
 
@@ -50,29 +45,20 @@ func TestStoragePersist(t *testing.T) {
 		s.Data.Lib.Items = []Item{}
 		s.Data.Search = nil
 		err := s.Persist()
-		if err != nil {
-			t.Fatalf("Unexpected error: %#v", err)
-		}
+		require.NoError(t, err)
 		bs, err := os.ReadFile(f)
-		if err != nil {
-			t.Fatalf("Failed to read file back: %v", err)
-		}
+		assert.NoError(t, err)
 		exp := `{"Lib":{"Version":0,"Items":[]},"Search":null}`
-		if string(bs) != exp {
-			t.Fatalf("Persisted wrong content: %v", bs)
-		}
+		assert.Equal(t, string(bs), exp)
 	})
 	t.Run("Not existent folder", func(t *testing.T) {
 		f := filepath.Join(t.TempDir(), "somefolder", "filename.json")
 		s := NewStorage(f)
 		err := s.Persist()
-		if err == nil {
-			t.Fatalf("Expected error")
-		}
+		var e *errWrite
+		assert.ErrorAs(t, err, &e)
 		var pe *fs.PathError
-		if !errors.As(err, &pe) {
-			t.Fatalf("Expected fs.PathError, got: %#v", err)
-		}
+		assert.ErrorAs(t, err, &pe)
 	})
 }
 
@@ -86,27 +72,18 @@ func TestStorageDrop(t *testing.T) {
 		file.Close()
 		s := NewStorage(f)
 		err = s.Drop()
-		if err != nil {
-			t.Fatalf("Unexpected error: %#v", err)
-		}
+		require.NoError(t, err)
 		_, err = os.Stat(f)
 		var pe *fs.PathError
-		if err == nil {
-			t.Fatalf("File was not deleted")
-		} else if !errors.As(err, &pe) {
-			t.Fatalf("Unexpected stat error: %#v", err)
-		}
+		assert.ErrorAs(t, err, &pe)
 	})
 	t.Run("Non existent", func(t *testing.T) {
 		f := filepath.Join(t.TempDir(), "filename.json")
 		s := NewStorage(f)
 		err := s.Drop()
-		if err == nil {
-			t.Fatalf("Expected error")
-		}
+		var e *errDrop
+		assert.ErrorAs(t, err, &e)
 		var pe *fs.PathError
-		if !errors.As(err, &pe) {
-			t.Fatalf("Expected fs.PathError, got: %#v", err)
-		}
+		assert.ErrorAs(t, err, &pe)
 	})
 }

@@ -8,8 +8,9 @@ import (
 	"bytes"
 	"flag"
 	"os"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMakeUsage(t *testing.T) {
@@ -33,14 +34,8 @@ func TestMakeUsage(t *testing.T) {
 	os.Args[0] = oldArg0
 
 	bs := b.String()
-	switch {
-	case !strings.Contains(bs, banner):
-		t.Fatalf("Does not contain the banner")
-	case !strings.Contains(bs, "Usage: "+arg0+" "+OptionsUsage+" "+cmd):
-		t.Fatalf("Does not contain usage...")
-	case !strings.Contains(bs, top):
-		t.Fatalf("Does not contain the top part")
-	case !strings.Contains(bs, bottom):
-		t.Fatalf("Does not contain the bottom part")
-	}
+	assert.Contains(t, bs, banner)
+	assert.Contains(t, bs, "Usage: "+arg0+" "+OptionsUsage+" "+cmd)
+	assert.Contains(t, bs, top)
+	assert.Contains(t, bs, bottom)
 }
