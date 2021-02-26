@@ -73,9 +73,7 @@ func TestStorageDrop(t *testing.T) {
 		s := NewStorage(f)
 		err = s.Drop()
 		require.NoError(t, err)
-		_, err = os.Stat(f)
-		var pe *fs.PathError
-		assert.ErrorAs(t, err, &pe)
+		assert.NoFileExists(t, f)
 	})
 	t.Run("Non existent", func(t *testing.T) {
 		f := filepath.Join(t.TempDir(), "filename.json")
