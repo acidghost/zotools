@@ -12,11 +12,13 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/acidghost/zotools/internal/common"
+	"github.com/acidghost/zotools/internal/config"
+	"github.com/acidghost/zotools/internal/storage"
+	"github.com/acidghost/zotools/internal/utils"
 	"github.com/mattn/go-shellwords"
 )
 
-const actUsageTop = " " + common.OptionsUsage + " [cmd [arg...]]"
+const actUsageTop = " " + utils.OptionsUsage + " [cmd [arg...]]"
 
 const actUsageBottom = `  cmd
         command and arguments to execute
@@ -32,40 +34,40 @@ func New(cmd, banner string) *Command {
 	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
 	flagIdx := fs.Uint("i", 0, "index into the search results")
 	flagForget := fs.Bool("forget", false, "forget previous search")
-	fs.Usage = common.MakeUsage(fs, cmd, banner, actUsageTop, actUsageBottom)
+	fs.Usage = utils.MakeUsage(fs, cmd, banner, actUsageTop, actUsageBottom)
 	return &Command{fs, flagIdx, flagForget}
 }
 
-func (c *Command) Run(args []string, config common.Config) {
+func (c *Command) Run(args []string, conf config.Config) {
 	//nolint:errcheck
 	c.fs.Parse(args)
 
-	storage := common.NewStorage(config.Storage)
-	if err := storage.Load(); err != nil {
-		common.Die("Failed to load storage:\n - %v\n", err)
+	store := storage.New(conf.Storage)
+	if err := store.Load(); err != nil {
+		utils.Die("Failed to load storage:\n - %v\n", err)
 	}
 
-	search := storage.Data.Search
+	search := store.Data.Search
 
 	if *c.flagForget {
 		if search != nil {
-			storage.Data.Search = nil
-			if err := storage.Persist(); err != nil {
-				common.Die("Failed to forget search:\n - %v\n", err)
+			store.Data.Search = nil
+			if err := store.Persist(); err != nil {
+				utils.Die("Failed to forget search:\n - %v\n", err)
 			}
 		}
 		return
 	}
 
 	if search == nil {
-		common.Die("No stored search\n")
+		utils.Die("No stored search\n")
 	} else if int(*c.flagIdx) >= len(search.Items) {
-		common.Die("Index %d is invalid: search contains %d items\n",
+		utils.Die("Index %d is invalid: search contains %d items\n",
 			*c.flagIdx, len(search.Items))
 	}
 
 	item := search.Items[*c.flagIdx]
-	path := common.MakePath(config.Zotero, item.Key, item.Filename)
+	path := utils.MakePath(conf.Zotero, item.Key, item.Filename)
 	fmt.Println(path)
 
 	var cmdName string
@@ -73,9 +75,9 @@ func (c *Command) Run(args []string, config common.Config) {
 	if c.fs.NArg() == 0 {
 		extensions, err := mime.ExtensionsByType(item.ContentType)
 		if err != nil {
-			common.Die("Could not parse MIME type: %v\n", err)
+			utils.Die("Could not parse MIME type: %v\n", err)
 		} else if extensions == nil {
-			common.Die("Unknown extension for MIME type '%s'\n", item.ContentType)
+			utils.Die("Unknown extension for MIME type '%s'\n", item.ContentType)
 		}
 		for _, extension := range extensions {
 			varName := "ZOTOOLS_" + strings.ToUpper(extension[1:])
@@ -83,7 +85,7 @@ func (c *Command) Run(args []string, config common.Config) {
 			if env != "" {
 				envArgs, err := shellwords.Parse(env)
 				if err != nil {
-					common.Die("Failed to parse %s: %v\n", varName, err)
+					utils.Die("Failed to parse %s: %v\n", varName, err)
 				}
 				cmdName = envArgs[0]
 				//nolint:gocritic
@@ -92,7 +94,7 @@ func (c *Command) Run(args []string, config common.Config) {
 			}
 		}
 		if cmdName == "" {
-			common.Die("Command not found for MIME type '%s'\n", item.ContentType)
+			utils.Die("Command not found for MIME type '%s'\n", item.ContentType)
 		}
 	} else {
 		args = c.fs.Args()
@@ -104,6 +106,6 @@ func (c *Command) Run(args []string, config common.Config) {
 	cmd := exec.Command(cmdName, cmdArgs...)
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
-		common.Die("Failed to run action: %v\n", err)
+		utils.Die("Failed to run action: %v\n", err)
 	}
 }

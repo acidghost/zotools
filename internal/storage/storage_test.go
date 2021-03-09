@@ -2,7 +2,7 @@
 //
 // Licensed under the terms of the GNU AGPL License version 3.
 
-package common
+package storage
 
 import (
 	"io/fs"
@@ -20,7 +20,7 @@ func TestStorageLoad(t *testing.T) {
 	t.Cleanup(func() { defaultFS = oldFS })
 	t.Run("Read error", func(t *testing.T) {
 		defaultFS = fstest.MapFS(map[string]*fstest.MapFile{})
-		s := NewStorage("filename.json")
+		s := New("filename.json")
 		err := s.Load()
 		var e *errReadStorage
 		assert.ErrorAs(t, err, &e)
@@ -30,7 +30,7 @@ func TestStorageLoad(t *testing.T) {
 		defaultFS = fstest.MapFS(map[string]*fstest.MapFile{
 			f: {Data: []byte(`{"key": "value"`)},
 		})
-		s := NewStorage(f)
+		s := New(f)
 		err := s.Load()
 		var e *errNotJSON
 		assert.ErrorAs(t, err, &e)
@@ -40,7 +40,7 @@ func TestStorageLoad(t *testing.T) {
 func TestStoragePersist(t *testing.T) {
 	t.Run("Persist file", func(t *testing.T) {
 		f := filepath.Join(t.TempDir(), "filename.json")
-		s := NewStorage(f)
+		s := New(f)
 		s.Data.Lib.Version = 0
 		s.Data.Lib.Items = []Item{}
 		s.Data.Search = nil
@@ -53,7 +53,7 @@ func TestStoragePersist(t *testing.T) {
 	})
 	t.Run("Not existent folder", func(t *testing.T) {
 		f := filepath.Join(t.TempDir(), "somefolder", "filename.json")
-		s := NewStorage(f)
+		s := New(f)
 		err := s.Persist()
 		var e *errWrite
 		assert.ErrorAs(t, err, &e)
@@ -70,14 +70,14 @@ func TestStorageDrop(t *testing.T) {
 			t.Fatalf("Cannot create file: %v", err)
 		}
 		file.Close()
-		s := NewStorage(f)
+		s := New(f)
 		err = s.Drop()
 		require.NoError(t, err)
 		assert.NoFileExists(t, f)
 	})
 	t.Run("Non existent", func(t *testing.T) {
 		f := filepath.Join(t.TempDir(), "filename.json")
-		s := NewStorage(f)
+		s := New(f)
 		err := s.Drop()
 		var e *errDrop
 		assert.ErrorAs(t, err, &e)

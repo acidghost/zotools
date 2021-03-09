@@ -2,16 +2,18 @@
 //
 // Licensed under the terms of the GNU AGPL License version 3.
 
-package common
+package storage
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"os"
 
+	"github.com/acidghost/zotools/internal/utils"
 	"github.com/acidghost/zotools/internal/zotero"
 )
+
+var defaultFS fs.FS = &utils.DummyFS{}
 
 type Storage struct {
 	filename string
@@ -56,59 +58,19 @@ type SearchResultsItem struct {
 	ContentType string
 }
 
-type errWrapped struct {
-	inner error
-}
+type errSpec string
 
-func (e *errWrapped) Unwrap() error {
-	return e.inner
-}
+const (
+	errReadStorageSpec = errSpec("wrap:could not read storage from file {{filename string %q}}")
+	errNotJSONSpec     = errSpec("wrap:failed to parse JSON from {{filename string %q}}")
+	errSerializeSpec   = errSpec("wrap:failed to serialize as JSON")
+	errWriteSpec       = errSpec("wrap:failed to write to {{filename string %q}}")
+	errDropSpec        = errSpec("wrap:failed to delete {{filename string %q}}")
+)
 
-type errReadStorage struct {
-	errWrapped
-	filename string
-}
+//go:generate gorror -type=errSpec -suffix=Spec
 
-func (e *errReadStorage) Error() string {
-	return fmt.Sprintf("could not read storage file %q: %v", e.filename, e.inner)
-}
-
-type errNotJSON struct {
-	errWrapped
-	filename string
-}
-
-func (e *errNotJSON) Error() string {
-	return fmt.Sprintf("failed to parse JSON from %q: %v", e.filename, e.inner)
-}
-
-type errSerialize struct {
-	errWrapped
-}
-
-func (e *errSerialize) Error() string {
-	return fmt.Sprintf("failed to serialize as JSON: %v", e.inner)
-}
-
-type errWrite struct {
-	errWrapped
-	filename string
-}
-
-func (e *errWrite) Error() string {
-	return fmt.Sprintf("failed to write to %q: %v", e.filename, e.inner)
-}
-
-type errDrop struct {
-	errWrapped
-	filename string
-}
-
-func (e *errDrop) Error() string {
-	return fmt.Sprintf("failed to delete %q: %v", e.filename, e.inner)
-}
-
-func NewStorage(filename string) Storage {
+func New(filename string) Storage {
 	var data StoredData
 	data.Lib = Library{0, []Item{}}
 	return Storage{filename, data}
@@ -117,10 +79,10 @@ func NewStorage(filename string) Storage {
 func (s *Storage) Load() error {
 	storeBytes, err := fs.ReadFile(defaultFS, s.filename)
 	if err != nil {
-		return &errReadStorage{errWrapped{err}, s.filename}
+		return newErrReadStorage(s.filename, err)
 	}
 	if err := json.Unmarshal(storeBytes, &s.Data); err != nil {
-		return &errNotJSON{errWrapped{err}, s.filename}
+		return newErrNotJSON(s.filename, err)
 	}
 	return nil
 }
@@ -128,11 +90,11 @@ func (s *Storage) Load() error {
 func (s *Storage) Persist() error {
 	serialized, err := json.Marshal(s.Data)
 	if err != nil {
-		return &errSerialize{errWrapped{err}}
+		return newErrSerialize(err)
 	}
 	err = os.WriteFile(s.filename, serialized, 0644)
 	if err != nil {
-		return &errWrite{errWrapped{err}, s.filename}
+		return newErrWrite(s.filename, err)
 	}
 	return nil
 }
@@ -140,7 +102,7 @@ func (s *Storage) Persist() error {
 func (s *Storage) Drop() (err error) {
 	err = os.Remove(s.filename)
 	if err != nil {
-		err = &errDrop{errWrapped{err}, s.filename}
+		err = newErrDrop(s.filename, err)
 	}
 	return
 }

@@ -2,7 +2,7 @@
 //
 // Licensed under the terms of the GNU AGPL License version 3.
 
-package common
+package utils
 
 import (
 	"flag"
@@ -18,8 +18,7 @@ var errorP = color.New(color.FgRed)
 
 var (
 	// Quit enables us to get coverage even when calling `os.Exit`
-	Quit            = os.Exit
-	defaultFS fs.FS = &dummyFS{}
+	Quit = os.Exit
 )
 
 func Eprintf(format string, args ...interface{}) {
@@ -31,9 +30,9 @@ func Die(format string, args ...interface{}) {
 	Quit(1)
 }
 
-type dummyFS struct{}
+type DummyFS struct{}
 
-func (*dummyFS) Open(name string) (fs.File, error) {
+func (*DummyFS) Open(name string) (fs.File, error) {
 	return os.Open(name)
 }
 

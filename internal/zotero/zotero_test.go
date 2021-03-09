@@ -50,7 +50,8 @@ func TestNewWithURL(t *testing.T) {
 		z, err := newWithURL("...\x00..somedomain.com", "someapikey")
 		require.Error(t, err)
 		assert.Nil(t, z)
-		checkErrorKind(t, err, ErrWrongURL)
+		var e *ErrWrongURL
+		assert.ErrorAs(t, err, &e)
 	})
 	t.Run("Failed request", func(t *testing.T) {
 		ts := httptest.NewUnstartedServer(nil)
@@ -58,7 +59,8 @@ func TestNewWithURL(t *testing.T) {
 		z, err := newWithURL(ts.URL, "someapikey")
 		require.Error(t, err)
 		assert.Nil(t, z)
-		checkErrorKind(t, err, ErrMakeReq)
+		var e *ErrMakeReq
+		assert.ErrorAs(t, err, &e)
 	})
 	t.Run("Not OK reply", func(t *testing.T) {
 		ts := httptest.NewServer(http.NotFoundHandler())
@@ -66,8 +68,8 @@ func TestNewWithURL(t *testing.T) {
 		z, err := newWithURL(ts.URL, "someapikey")
 		require.Error(t, err)
 		assert.Nil(t, z)
-		var ek *ErrWrongStatus
-		checkErrorKindStruct(t, err, &ek)
+		var e *ErrWrongStatus
+		assert.ErrorAs(t, err, &e)
 	})
 	t.Run("Invalid JSON reply", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +80,8 @@ func TestNewWithURL(t *testing.T) {
 		z, err := newWithURL(ts.URL, "someapikey")
 		require.Error(t, err)
 		assert.Nil(t, z)
-		checkErrorKind(t, err, ErrJSON)
+		var e *ErrJSON
+		assert.ErrorAs(t, err, &e)
 		var inner *json.SyntaxError
 		assert.ErrorAs(t, err, &inner)
 	})
@@ -132,7 +135,8 @@ func TestItems(t *testing.T) {
 		res, _, err := zotFromServer(ts).Items(0, MaxLimit)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		checkErrorKind(t, err, ErrMakeReq)
+		var e *ErrMakeReq
+		assert.ErrorAs(t, err, &e)
 		var inner *url.Error
 		assert.ErrorAs(t, err, &inner)
 	})
@@ -142,7 +146,8 @@ func TestItems(t *testing.T) {
 		res, _, err := z.Items(0, MaxLimit)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		checkErrorKind(t, err, ErrWrongURL)
+		var e *ErrWrongURL
+		assert.ErrorAs(t, err, &e)
 	})
 	t.Run("Status not OK", func(t *testing.T) {
 		ts := httptest.NewServer(http.NotFoundHandler())
@@ -150,8 +155,8 @@ func TestItems(t *testing.T) {
 		res, _, err := zotFromServer(ts).Items(0, MaxLimit)
 		assert.Nil(t, res)
 		assert.Error(t, err)
-		var ek *ErrWrongStatus
-		checkErrorKindStruct(t, err, &ek)
+		var e *ErrWrongStatus
+		assert.ErrorAs(t, err, &e)
 	})
 	t.Run("Wrong total results header", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -164,9 +169,9 @@ func TestItems(t *testing.T) {
 		res, _, err := zotFromServer(ts).Items(0, MaxLimit)
 		assert.Nil(t, res)
 		assert.Error(t, err)
-		var ek *ErrParseHeader
-		checkErrorKindStruct(t, err, &ek)
-		assert.Equal(t, ek.header, totalResHeader)
+		var e *ErrParseHeader
+		assert.ErrorAs(t, err, &e)
+		assert.Equal(t, e.header, totalResHeader)
 	})
 	t.Run("Invalid JSON reply", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -179,7 +184,8 @@ func TestItems(t *testing.T) {
 		res, _, err := zotFromServer(ts).Items(0, MaxLimit)
 		require.Error(t, err)
 		assert.Nil(t, res)
-		checkErrorKind(t, err, ErrJSON)
+		var e *ErrJSON
+		assert.ErrorAs(t, err, &e)
 		var inner *json.SyntaxError
 		assert.ErrorAs(t, err, &inner)
 	})
@@ -194,9 +200,9 @@ func TestItems(t *testing.T) {
 		res, _, err := zotFromServer(ts).Items(0, MaxLimit)
 		assert.Nil(t, res)
 		assert.Error(t, err)
-		var ek *ErrParseHeader
-		checkErrorKindStruct(t, err, &ek)
-		assert.Equal(t, ek.header, lastModifiedHeader)
+		var e *ErrParseHeader
+		assert.ErrorAs(t, err, &e)
+		assert.Equal(t, e.header, lastModifiedHeader)
 	})
 }
 
@@ -239,24 +245,9 @@ func TestAllItems(t *testing.T) {
 		ts := httptest.NewServer(http.NotFoundHandler())
 		defer ts.Close()
 		_, err := zotFromServer(ts).AllItems()
-		var ek *ErrWrongStatus
-		checkErrorKindStruct(t, err, &ek)
+		var e *ErrWrongStatus
+		assert.ErrorAs(t, err, &e)
 	})
-}
-
-func checkErrorKind(t *testing.T, err, kind error) {
-	t.Helper()
-	var e *Error
-	if assert.ErrorAs(t, err, &e) {
-		assert.ErrorIs(t, e.Kind(), kind)
-	}
-}
-
-func checkErrorKindStruct(t *testing.T, err error, kind interface{}) {
-	t.Helper()
-	var e *Error
-	require.ErrorAs(t, err, &e)
-	require.ErrorAs(t, e.Kind(), kind)
 }
 
 func zotFromServer(ts *httptest.Server) *Zotero {

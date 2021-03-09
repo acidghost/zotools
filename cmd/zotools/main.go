@@ -11,9 +11,10 @@ import (
 	"os"
 
 	"github.com/acidghost/zotools/internal/act"
-	"github.com/acidghost/zotools/internal/common"
+	"github.com/acidghost/zotools/internal/config"
 	"github.com/acidghost/zotools/internal/search"
 	"github.com/acidghost/zotools/internal/sync"
+	"github.com/acidghost/zotools/internal/utils"
 	"github.com/fatih/color"
 )
 
@@ -34,7 +35,7 @@ var version = "dev"
 //go:embed banner.txt
 var banner string
 
-const usageFmt = `Usage: %[1]s ` + common.OptionsUsage + ` command
+const usageFmt = `Usage: %[1]s ` + utils.OptionsUsage + ` command
 
 Available commands:
   - %[2]s
@@ -60,7 +61,7 @@ func makeBanner() string {
 }
 
 type command interface {
-	Run([]string, common.Config)
+	Run([]string, config.Config)
 }
 
 func main() {
@@ -77,19 +78,19 @@ func main() {
 
 	if *flagVersion {
 		fmt.Println(banner)
-		common.Quit(0)
+		utils.Quit(0)
 	}
 
 	// Get remaining arguments that are not part of the root group
 	args := os.Args[len(os.Args)-flag.NArg():]
 	if len(args) < 1 {
 		usage()
-		common.Quit(1)
+		utils.Quit(1)
 	}
 
 	if args[0] == "help" {
 		usage()
-		common.Quit(0)
+		utils.Quit(0)
 	}
 
 	var configPath string
@@ -98,13 +99,13 @@ func main() {
 	if *flagConfig == "" {
 		configPath = os.Getenv("ZOTOOLS")
 		if configPath == "" {
-			common.Die("Configuration file is required\n")
+			utils.Die("Configuration file is required\n")
 		}
 	} else {
 		configPath = *flagConfig
 	}
 
-	config := common.LoadConfig(configPath)
+	conf := config.Load(configPath)
 
 	var cmd command
 	switch args[0] {
@@ -115,8 +116,8 @@ func main() {
 	case syncCmd:
 		cmd = sync.New(args[0], banner)
 	default:
-		common.Die("Command '%s' not recognized\n", args[0])
+		utils.Die("Command '%s' not recognized\n", args[0])
 	}
 
-	cmd.Run(args[1:], config)
+	cmd.Run(args[1:], conf)
 }

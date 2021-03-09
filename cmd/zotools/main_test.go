@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/acidghost/zotools/internal/common"
+	"github.com/acidghost/zotools/internal/utils"
 )
 
 var exitCode int
@@ -40,9 +40,9 @@ func TestMainWrap(_ *testing.T) {
 
 	// Replace `Quit` so we don't exit prematurely and store coverage appropriately
 	ch := make(chan int)
-	oldQuit := common.Quit
-	defer func() { common.Quit = oldQuit }()
-	common.Quit = func(code int) {
+	oldQuit := utils.Quit
+	defer func() { utils.Quit = oldQuit }()
+	utils.Quit = func(code int) {
 		ch <- code
 		// Lock the goroutine running `main`, otherwise returning will cause havoc
 		ch <- code

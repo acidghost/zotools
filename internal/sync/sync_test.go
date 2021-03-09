@@ -7,7 +7,7 @@ package sync
 import (
 	"testing"
 
-	"github.com/acidghost/zotools/internal/common"
+	"github.com/acidghost/zotools/internal/storage"
 	"github.com/acidghost/zotools/internal/zotero"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,7 +34,7 @@ func TestInitSync(t *testing.T) {
 			},
 		},
 	}
-	s := common.NewStorage("")
+	s := storage.New("")
 	initSync(&s, itemsRes)
 	assert.Equal(t, s.Data.Lib.Version, uint(1337))
 	assert.Equal(t, s.Data.Lib.Items[0].Key, "item1")
@@ -63,7 +63,7 @@ func TestInitSyncInv(t *testing.T) {
 			},
 		},
 	}
-	s := common.NewStorage("")
+	s := storage.New("")
 	initSync(&s, itemsRes)
 	assert.Equal(t, s.Data.Lib.Version, uint(1337))
 	assert.Equal(t, s.Data.Lib.Items[0].Key, "item1")
@@ -100,7 +100,7 @@ func TestInitSyncMultiAttach(t *testing.T) {
 			},
 		},
 	}
-	s := common.NewStorage("")
+	s := storage.New("")
 	initSync(&s, itemsRes)
 	assert.Equal(t, s.Data.Lib.Items[0].Key, "item1")
 	assert.Equal(t, s.Data.Lib.Items[0].Attachments[0].Key, "item2")

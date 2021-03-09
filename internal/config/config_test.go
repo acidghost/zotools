@@ -2,7 +2,7 @@
 //
 // Licensed under the terms of the GNU AGPL License version 3.
 
-package common
+package config
 
 import (
 	"bytes"

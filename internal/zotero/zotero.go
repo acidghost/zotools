@@ -6,7 +6,6 @@ package zotero
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -59,59 +58,28 @@ type Zotero struct {
 	userInfo apiKey
 }
 
-type Error struct {
-	err  error
-	kind error
-}
+type errSpec string
 
-func (e *Error) Error() string {
-	if e.err == nil {
-		return e.kind.Error()
-	}
-	return fmt.Sprintf("%v: %v", e.kind, e.err)
-}
-
-func (e *Error) Unwrap() error {
-	return e.err
-}
-
-func (e *Error) Kind() error {
-	return e.kind
-}
-
-var (
-	ErrWrongURL = errors.New("failed to create request")
-	ErrMakeReq  = errors.New("failed to execute request")
-	ErrReadBody = errors.New("failed to read response body")
-	ErrJSON     = errors.New("failed to parse data from JSON reply")
+const (
+	errWrongURL    = errSpec("wrap:creating request to {{url string %s}}")
+	errMakeReq     = errSpec("wrap:executing request to {{req.URL http.Request %s}}")
+	errReadBody    = errSpec("wrap:reading response body")
+	errJSON        = errSpec("wrap:parsing JSON from reply")
+	errWrongStatus = errSpec("nowrap:received {{recv int %v}} status code instead of {{exp int %v}}")
+	errParseHeader = errSpec("wrap:parsing header {{header string %q}}")
 )
 
-// ErrWrongStatus is returned if we receive an unexpected response status code
-type ErrWrongStatus struct {
-	expected, received int
-}
-
-func (e *ErrWrongStatus) Error() string {
-	return fmt.Sprintf("received %v status code instead of %v", e.received, e.expected)
-}
-
-// ErrParseHeader is returned if we fail to parse an header somewhere
-type ErrParseHeader struct {
-	header string
-}
-
-func (e *ErrParseHeader) Error() string {
-	return fmt.Sprintf("failed to parse header %q", e.header)
-}
+//go:generate gorror -type=errSpec -P -import=net/http
 
 func New(key string) (*Zotero, error) {
 	return newWithURL(apiURL, key)
 }
 
 func newWithURL(baseURL, key string) (*Zotero, error) {
-	req, err := http.NewRequest("GET", baseURL+"/keys/current", nil)
+	url := baseURL + "/keys/current"
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, &Error{err, ErrWrongURL}
+		return nil, NewErrWrongURL(url, err)
 	}
 
 	setHeaders(req, key)
@@ -119,23 +87,23 @@ func newWithURL(baseURL, key string) (*Zotero, error) {
 	var client http.Client
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, &Error{err, ErrMakeReq}
+		return nil, NewErrMakeReq(*req, err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, &Error{nil, &ErrWrongStatus{http.StatusOK, resp.StatusCode}}
+		return nil, NewErrWrongStatus(resp.StatusCode, http.StatusOK)
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, &Error{err, ErrReadBody}
+		return nil, NewErrReadBody(err)
 	}
 
 	var apiKeyInfo apiKey
 	if err := json.Unmarshal(respBody, &apiKeyInfo); err != nil {
-		return nil, &Error{err, ErrJSON}
+		return nil, NewErrJSON(err)
 	}
 
 	return &Zotero{key, baseURL, client, apiKeyInfo}, nil
@@ -158,25 +126,25 @@ func (z *Zotero) Items(start, limit uint) (*ItemsResult, bool, error) {
 	fmt.Printf("Requesting items %s\n", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, false, &Error{err, ErrWrongURL}
+		return nil, false, NewErrWrongURL(url, err)
 	}
 
 	setHeaders(req, z.key)
 
 	resp, err := z.client.Do(req)
 	if err != nil {
-		return nil, false, &Error{err, ErrMakeReq}
+		return nil, false, NewErrMakeReq(*req, err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, false, &Error{nil, &ErrWrongStatus{http.StatusOK, resp.StatusCode}}
+		return nil, false, NewErrWrongStatus(resp.StatusCode, http.StatusOK)
 	}
 
 	totalItems, err := strconv.ParseUint(resp.Header.Get(totalResHeader), 10, 64)
 	if err != nil {
-		return nil, false, &Error{err, &ErrParseHeader{totalResHeader}}
+		return nil, false, NewErrParseHeader(totalResHeader, err)
 	}
 
 	more := uint64(start+limit) < totalItems
@@ -184,17 +152,17 @@ func (z *Zotero) Items(start, limit uint) (*ItemsResult, bool, error) {
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, more, &Error{err, ErrReadBody}
+		return nil, more, NewErrReadBody(err)
 	}
 
 	if err := json.Unmarshal(respBody, &items); err != nil {
-		return nil, more, &Error{err, ErrJSON}
+		return nil, more, NewErrJSON(err)
 	}
 
 	versionH := resp.Header.Get(lastModifiedHeader)
 	version, err := strconv.ParseUint(versionH, 10, 64)
 	if err != nil {
-		return nil, more, &Error{err, &ErrParseHeader{lastModifiedHeader}}
+		return nil, more, NewErrParseHeader(lastModifiedHeader, err)
 	}
 
 	return &ItemsResult{items, uint(version)}, more, nil
