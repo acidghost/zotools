@@ -2,16 +2,18 @@
 //
 // Licensed under the terms of the GNU AGPL License version 3.
 
-package common
+package storage
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"os"
 
+	"github.com/acidghost/zotools/internal/utils"
 	"github.com/acidghost/zotools/internal/zotero"
 )
+
+var defaultFS fs.FS = &utils.DummyFS{}
 
 type Storage struct {
 	filename string
@@ -108,7 +110,7 @@ func (e *errDrop) Error() string {
 	return fmt.Sprintf("failed to delete %q: %v", e.filename, e.inner)
 }
 
-func NewStorage(filename string) Storage {
+func New(filename string) Storage {
 	var data StoredData
 	data.Lib = Library{0, []Item{}}
 	return Storage{filename, data}

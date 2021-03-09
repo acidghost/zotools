@@ -2,7 +2,7 @@
 //
 // Licensed under the terms of the GNU AGPL License version 3.
 
-package common
+package config
 
 import (
 	"encoding/json"
@@ -11,6 +11,8 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"github.com/acidghost/zotools/internal/utils"
 )
 
 type Config struct {
@@ -41,18 +43,18 @@ func (e *ErrConfig) Error() string {
 	return strings.Join(ss, "\n")
 }
 
-func LoadConfig(path string) Config {
+func Load(path string) Config {
 	file, err := os.Open(path)
 	if err != nil {
-		Die("Failed to open config file %q: %v\n", path, err)
+		utils.Die("Failed to open config file %q: %v\n", path, err)
 	}
 	config, err := loadConfigReader(file)
 	if err != nil {
 		var ec *ErrConfig
 		if errors.As(err, &ec) {
-			Die("Wrong config values in %q:\n%v\n", path, err)
+			utils.Die("Wrong config values in %q:\n%v\n", path, err)
 		}
-		Die("Failed to load config from %q: %v\n", path, err)
+		utils.Die("Failed to load config from %q: %v\n", path, err)
 	}
 	return config
 }

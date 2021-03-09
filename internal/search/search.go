@@ -13,7 +13,9 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/acidghost/zotools/internal/common"
+	"github.com/acidghost/zotools/internal/config"
+	"github.com/acidghost/zotools/internal/storage"
+	"github.com/acidghost/zotools/internal/utils"
 	"github.com/acidghost/zotools/internal/zotero"
 	"github.com/fatih/color"
 	"golang.org/x/text/runes"
@@ -21,7 +23,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-const searchUsageTop = " " + common.OptionsUsage + " search-regexp"
+const searchUsageTop = " " + utils.OptionsUsage + " search-regexp"
 
 const searchUsageBottom = `  search-regexp
         regexp to search for in the library (case-insensitive, in title)
@@ -50,22 +52,22 @@ func New(cmd, banner string) *Command {
 	flagSens := fs.Bool("s", false, "regular expression is case sensitive")
 	flagPar := fs.Uint("j", uint(numCPU),
 		fmt.Sprintf("number of search jobs (between 1 and %d)", numCPU))
-	fs.Usage = common.MakeUsage(fs, cmd, banner, searchUsageTop, searchUsageBottom)
+	fs.Usage = utils.MakeUsage(fs, cmd, banner, searchUsageTop, searchUsageBottom)
 	return &Command{fs, flagAbstract, flagAuthors, flagSens, flagPar}
 }
 
-func (c *Command) Run(args []string, config common.Config) {
+func (c *Command) Run(args []string, conf config.Config) {
 	//nolint:errcheck
 	c.fs.Parse(args)
 	search := c.fs.Arg(0)
 	if search == "" {
 		c.fs.Usage()
-		common.Quit(1)
+		utils.Quit(1)
 	}
 
 	par := int(*c.flagPar)
 	if par < 1 || par > numCPU {
-		common.Die("Number of jobs must be between 1 and %d\n", numCPU)
+		utils.Die("Number of jobs must be between 1 and %d\n", numCPU)
 	}
 
 	var reFlags string
@@ -77,21 +79,21 @@ func (c *Command) Run(args []string, config common.Config) {
 	}
 	re, err := regexp.Compile(reFlags + search)
 	if err != nil {
-		common.Die("Wrong search: %v\n", err)
+		utils.Die("Wrong search: %v\n", err)
 	}
 
-	storage := common.NewStorage(config.Storage)
-	if err := storage.Load(); err != nil {
-		common.Die("Failed to load the local storage:\n - %v\n", err)
+	store := storage.New(conf.Storage)
+	if err := store.Load(); err != nil {
+		utils.Die("Failed to load the local storage:\n - %v\n", err)
 	}
 
 	fmt.Printf("Loaded storage, version %d, %d items\n",
-		storage.Data.Lib.Version, len(storage.Data.Lib.Items))
+		store.Data.Lib.Version, len(store.Data.Lib.Items))
 
 	wgMatchers := sync.WaitGroup{}
-	itemsCh := make(chan common.Item)
-	matchedCh := make(chan common.Item)
-	resCh := make(chan common.SearchResults)
+	itemsCh := make(chan storage.Item)
+	matchedCh := make(chan storage.Item)
+	resCh := make(chan storage.SearchResults)
 
 	// Start matcher jobs
 	for i := 0; i < par; i++ {
@@ -116,7 +118,7 @@ func (c *Command) Run(args []string, config common.Config) {
 
 	// Printer job, receives from the matchers
 	go func() {
-		res := common.SearchResults{Term: search, Items: make([]common.SearchResultsItem, 0, 10)}
+		res := storage.SearchResults{Term: search, Items: make([]storage.SearchResultsItem, 0, 10)}
 		var i uint
 		for item := range matchedCh {
 			titleColor.Print(item.Title)
@@ -126,10 +128,10 @@ func (c *Command) Run(args []string, config common.Config) {
 				fmt.Println()
 			}
 			for _, attach := range item.Attachments {
-				path := common.MakePath(config.Zotero, attach.Key, attach.Filename)
+				path := utils.MakePath(conf.Zotero, attach.Key, attach.Filename)
 				ns := fmt.Sprintf("%3d)", i)
 				fmt.Printf("%s %s\n", selColor.Sprint(ns), attachColor.Sprint(path))
-				res.Items = append(res.Items, common.SearchResultsItem{
+				res.Items = append(res.Items, storage.SearchResultsItem{
 					Key:         attach.Key,
 					Filename:    attach.Filename,
 					ContentType: attach.ContentType,
@@ -141,7 +143,7 @@ func (c *Command) Run(args []string, config common.Config) {
 	}()
 
 	// Send all items to matchers
-	for _, item := range storage.Data.Lib.Items {
+	for _, item := range store.Data.Lib.Items {
 		itemsCh <- item
 	}
 
@@ -149,17 +151,17 @@ func (c *Command) Run(args []string, config common.Config) {
 	close(itemsCh)
 	// Wait for printer to be done
 	res := <-resCh
-	storage.Data.Search = &res
-	if err := storage.Persist(); err != nil {
-		common.Die("Failed to persist search:\n - %v\n", err)
+	store.Data.Search = &res
+	if err := store.Persist(); err != nil {
+		utils.Die("Failed to persist search:\n - %v\n", err)
 	}
 
-	if len(storage.Data.Search.Items) == 0 {
-		common.Quit(1)
+	if len(store.Data.Search.Items) == 0 {
+		utils.Quit(1)
 	}
 }
 
-func (c *Command) matchItem(m *matcher, item *common.Item) bool {
+func (c *Command) matchItem(m *matcher, item *storage.Item) bool {
 	match := m.match(item.Title)
 	if *c.flagAbstract {
 		if *c.flagAuthors {
