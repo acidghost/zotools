@@ -37,8 +37,8 @@ func TestInitSync(t *testing.T) {
 	s := storage.New("")
 	initSync(&s, itemsRes)
 	assert.Equal(t, s.Data.Lib.Version, uint(1337))
-	assert.Equal(t, s.Data.Lib.Items[0].Key, "item1")
-	assert.Equal(t, s.Data.Lib.Items[0].Attachments[0].Key, "item2")
+	assert.Equal(t, s.Data.Lib.Items["item1"].Title, "title item1")
+	assert.Equal(t, s.Data.Lib.Items["item1"].Attachments["item2"].Version, uint(2))
 }
 
 func TestInitSyncInv(t *testing.T) {
@@ -66,8 +66,8 @@ func TestInitSyncInv(t *testing.T) {
 	s := storage.New("")
 	initSync(&s, itemsRes)
 	assert.Equal(t, s.Data.Lib.Version, uint(1337))
-	assert.Equal(t, s.Data.Lib.Items[0].Key, "item1")
-	assert.Equal(t, s.Data.Lib.Items[0].Attachments[0].Key, "item2")
+	assert.Equal(t, s.Data.Lib.Items["item1"].Title, "title item1")
+	assert.Equal(t, s.Data.Lib.Items["item1"].Attachments["item2"].Version, uint(2))
 }
 
 func TestInitSyncMultiAttach(t *testing.T) {
@@ -92,7 +92,7 @@ func TestInitSyncMultiAttach(t *testing.T) {
 			},
 			{
 				Key:     "item3",
-				Version: 2,
+				Version: 3,
 				Data: zotero.ItemData{
 					Title:     "item2.pdf",
 					ParentKey: "item1",
@@ -102,7 +102,7 @@ func TestInitSyncMultiAttach(t *testing.T) {
 	}
 	s := storage.New("")
 	initSync(&s, itemsRes)
-	assert.Equal(t, s.Data.Lib.Items[0].Key, "item1")
-	assert.Equal(t, s.Data.Lib.Items[0].Attachments[0].Key, "item2")
-	assert.Equal(t, s.Data.Lib.Items[0].Attachments[1].Key, "item3")
+	assert.Equal(t, s.Data.Lib.Items["item1"].Title, "title item1")
+	assert.Equal(t, s.Data.Lib.Items["item1"].Attachments["item2"].Version, uint(2))
+	assert.Equal(t, s.Data.Lib.Items["item1"].Attachments["item3"].Version, uint(3))
 }

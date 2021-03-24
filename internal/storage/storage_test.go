@@ -42,13 +42,13 @@ func TestStoragePersist(t *testing.T) {
 		f := filepath.Join(t.TempDir(), "filename.json")
 		s := New(f)
 		s.Data.Lib.Version = 0
-		s.Data.Lib.Items = []Item{}
+		s.Data.Lib.Items = make(ItemsMap)
 		s.Data.Search = nil
 		err := s.Persist()
 		require.NoError(t, err)
 		bs, err := os.ReadFile(f)
 		assert.NoError(t, err)
-		exp := `{"Lib":{"Version":0,"Items":[]},"Search":null}`
+		exp := `{"Lib":{"Version":0,"Items":{}},"Search":null}`
 		assert.Equal(t, string(bs), exp)
 	})
 	t.Run("Not existent folder", func(t *testing.T) {
