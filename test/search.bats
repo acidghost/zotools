@@ -5,7 +5,7 @@ load helpers
 @test "Simple search" {
     run_zotools search learn
     [ "$status" -eq 0 ]
-    [ "${lines[0]}" = "Loaded storage, version 771, 151 items" ]
+    [ "${lines[0]}" = "Loaded storage, version 779, 153 items" ]
     [[ "${lines[2]}" =~ '0)' ]]
     [[ "${lines[4]}" =~ '1)' ]]
     [[ "${lines[6]}" =~ '2)' ]]
@@ -20,7 +20,7 @@ load helpers
 @test "Search uninfindable" {
     run_zotools search uninfindable
     [ "$status" -eq 1 ]
-    [ "$output" = "Loaded storage, version 771, 151 items" ]
+    [ "$output" = "Loaded storage, version 779, 153 items" ]
 }
 
 @test "Search authors" {

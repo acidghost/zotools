@@ -127,12 +127,12 @@ func (c *Command) Run(args []string, conf config.Config) {
 			} else {
 				fmt.Println()
 			}
-			for _, attach := range item.Attachments {
-				path := utils.MakePath(conf.Zotero, attach.Key, attach.Filename)
+			for key, attach := range item.Attachments {
+				path := utils.MakePath(conf.Zotero, key, attach.Filename)
 				ns := fmt.Sprintf("%3d)", i)
 				fmt.Printf("%s %s\n", selColor.Sprint(ns), attachColor.Sprint(path))
 				res.Items = append(res.Items, storage.SearchResultsItem{
-					Key:         attach.Key,
+					Key:         key,
 					Filename:    attach.Filename,
 					ContentType: attach.ContentType,
 				})

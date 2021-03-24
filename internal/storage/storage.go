@@ -27,21 +27,23 @@ type StoredData struct {
 
 type Library struct {
 	Version uint
-	Items   []Item
+	Items   ItemsMap
 }
 
+type ItemsMap map[string]Item
+
 type Item struct {
-	Key         string
 	Version     uint
 	Title       string
 	Abstract    string
 	ItemType    string
 	Creators    []zotero.Creator
-	Attachments []Attachment
+	Attachments AttachmentsMap
 }
 
+type AttachmentsMap map[string]Attachment
+
 type Attachment struct {
-	Key         string
 	Version     uint
 	ContentType string
 	Filename    string
@@ -72,7 +74,7 @@ const (
 
 func New(filename string) Storage {
 	var data StoredData
-	data.Lib = Library{0, []Item{}}
+	data.Lib = Library{0, make(ItemsMap)}
 	return Storage{filename, data}
 }
 

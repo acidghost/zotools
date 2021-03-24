@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -77,36 +78,38 @@ func New(key string) (*Zotero, error) {
 
 func newWithURL(baseURL, key string) (*Zotero, error) {
 	url := baseURL + "/keys/current"
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, NewErrWrongURL(url, err)
-	}
-
-	setHeaders(req, key)
-
 	var client http.Client
-	resp, err := client.Do(req)
+	//nolint:bodyclose // It is actually closed inside the function.
+	_, respBody, err := makeReq(url, key, &client)
 	if err != nil {
-		return nil, NewErrMakeReq(*req, err)
+		return nil, err
 	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewErrWrongStatus(resp.StatusCode, http.StatusOK)
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, NewErrReadBody(err)
-	}
-
 	var apiKeyInfo apiKey
 	if err := json.Unmarshal(respBody, &apiKeyInfo); err != nil {
 		return nil, NewErrJSON(err)
 	}
-
 	return &Zotero{key, baseURL, client, apiKeyInfo}, nil
+}
+
+func makeReq(url, key string, client *http.Client) (*http.Response, []byte, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, nil, NewErrWrongURL(url, err)
+	}
+	setHeaders(req, key)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, nil, NewErrMakeReq(*req, err)
+	}
+	if err := checkStatusCode(resp, http.StatusOK); err != nil {
+		return nil, nil, err
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, NewErrReadBody(err)
+	}
+	return resp, respBody, nil
 }
 
 func setHeaders(req *http.Request, key string) {
@@ -114,58 +117,60 @@ func setHeaders(req *http.Request, key string) {
 	req.Header.Add(authHeader, key)
 }
 
+func checkStatusCode(resp *http.Response, expected int) error {
+	if resp.StatusCode != expected {
+		return NewErrWrongStatus(resp.StatusCode, expected)
+	}
+	return nil
+}
+
 type ItemsResult struct {
 	Items   []Item
 	Version uint
 }
 
-func (z *Zotero) Items(start, limit uint) (*ItemsResult, bool, error) {
-	url := fmt.Sprintf("%s/users/%d/items?limit=%d&start=%d",
-		z.url, z.userInfo.UserID, limit, start)
-
+func (z *Zotero) items(url string) (*ItemsResult, uint64, error) {
 	fmt.Printf("Requesting items %s\n", url)
-	req, err := http.NewRequest("GET", url, nil)
+	resp, respBody, err := makeReq(url, z.key, &z.client)
 	if err != nil {
-		return nil, false, NewErrWrongURL(url, err)
+		return nil, 0, err
 	}
-
-	setHeaders(req, z.key)
-
-	resp, err := z.client.Do(req)
-	if err != nil {
-		return nil, false, NewErrMakeReq(*req, err)
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, false, NewErrWrongStatus(resp.StatusCode, http.StatusOK)
-	}
-
 	totalItems, err := strconv.ParseUint(resp.Header.Get(totalResHeader), 10, 64)
 	if err != nil {
-		return nil, false, NewErrParseHeader(totalResHeader, err)
+		return nil, 0, NewErrParseHeader(totalResHeader, err)
 	}
-
-	more := uint64(start+limit) < totalItems
 	items := []Item{}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, more, NewErrReadBody(err)
-	}
-
 	if err := json.Unmarshal(respBody, &items); err != nil {
-		return nil, more, NewErrJSON(err)
+		return nil, totalItems, NewErrJSON(err)
 	}
+	version, err := parseVersionHeader(resp)
+	if err != nil {
+		return nil, totalItems, err
+	}
+	return &ItemsResult{items, uint(version)}, totalItems, nil
+}
 
+func parseVersionHeader(resp *http.Response) (uint, error) {
 	versionH := resp.Header.Get(lastModifiedHeader)
 	version, err := strconv.ParseUint(versionH, 10, 64)
 	if err != nil {
-		return nil, more, NewErrParseHeader(lastModifiedHeader, err)
+		return 0, NewErrParseHeader(lastModifiedHeader, err)
 	}
+	return uint(version), nil
+}
 
-	return &ItemsResult{items, uint(version)}, more, nil
+func (z *Zotero) Items(start, limit uint) (*ItemsResult, bool, error) {
+	url := fmt.Sprintf("%s/users/%d/items?limit=%d&start=%d",
+		z.url, z.userInfo.UserID, limit, start)
+	items, totalItems, err := z.items(url)
+	return items, uint64(start+limit) < totalItems, err
+}
+
+func (z *Zotero) ItemsByKey(keys []string) (*ItemsResult, error) {
+	url := fmt.Sprintf("%s/users/%d/items?itemKey=%s",
+		z.url, z.userInfo.UserID, strings.Join(keys, ","))
+	items, _, err := z.items(url)
+	return items, err
 }
 
 func (z *Zotero) AllItems() (ItemsResult, error) {
@@ -183,4 +188,23 @@ func (z *Zotero) AllItems() (ItemsResult, error) {
 		}
 		start += MaxLimit
 	}
+}
+
+type VersionsReply struct {
+	Versions   map[string]uint
+	LibVersion uint
+}
+
+func (z *Zotero) VersionsSince(since uint) (versions VersionsReply, err error) {
+	url := fmt.Sprintf("%s/users/%d/items?format=versions&since=%d",
+		z.url, z.userInfo.UserID, since)
+	resp, respBody, err := makeReq(url, z.key, &z.client)
+	if err != nil {
+		return
+	}
+	if err = json.Unmarshal(respBody, &versions.Versions); err != nil {
+		return versions, NewErrJSON(err)
+	}
+	versions.LibVersion, err = parseVersionHeader(resp)
+	return
 }
